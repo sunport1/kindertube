@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>KinderTube Safe Tablet</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Web App Manifest support for Fire Tablet Home Screen -->
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#0f172a">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&family=Nunito:wght@600;800;900&display=swap');
+        
+        * {
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            touch-action: manipulation;
+        }
+
+        h1, h2, h3, .brand-font {
+            font-family: 'Fredoka', cursive;
+        }
+
+        /* Focus & Active states optimized for Touch and Remote D-Pad */
+        .tv-focusable {
+            outline: none;
+            transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+
+        .tv-focusable:active, .tv-focusable:focus, .tv-focusable.tv-focused {
+            transform: scale(1.04);
+            box-shadow: 0 0 0 4px #fbbf24, 0 10px 25px rgba(0, 0, 0, 0.5);
+            border-color: #fbbf24 !important;
+        }
+
+        /* Category Chips for Fast Swiping / Tapping */
+        .category-chip.active-chip {
+            background-color: #f59e0b !important;
+            color: #020617 !important;
+            border-color: #f59e0b !important;
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+            border-radius: 8px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 8px;
+        }
+
+        /* Animations */
+        .fade-in {
+            animation: fadeIn 0.2s ease-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.97); }
+            to { opacity: 1; transform: scale(1); }
+        }
+
+        .pulse-subtle {
+            animation: pulseSubtle 2.5s infinite alternate;
+        }
+        @keyframes pulseSubtle {
+            0% { transform: scale(0.98); opacity: 0.9; }
+            100% { transform: scale(1.02); opacity: 1; }
+        }
+
+        /* Touch Lock Overlay Pulse */
+        .lock-pulse {
+            animation: lockPulse 1.5s infinite;
+        }
+        @keyframes lockPulse {
+            0% { transform: scale(1); opacity: 0.8; }
+            50% { transform: scale(1.1); opacity: 1; }
+            100% { transform: scale(1); opacity: 0.8; }
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col justify-between bg-slate-950 text-slate-100 overflow-hidden select-none">
+
+    <!-- Top Header Bar -->
+    <header class="h-16 md:h-20 px-4 md:px-8 py-3 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between z-30 shrink-0">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 md:w-12 md:h-12 bg-gradient-to-tr from-amber-500 to-rose-500 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/20">
+                <i class="fa-solid fa-play text-xl md:text-2xl text-white ml-0.5"></i>
+            </div>
+            <div>
+                <h1 class="text-xl md:text-2xl font-bold tracking-wide text-amber-400 leading-tight">KinderTube <span class="text-rose-400">Tablet</span></h1>
+                <p class="text-[10px] md:text-xs text-slate-400 hidden sm:block">Sicheres Kinder-TV ohne Werbung & Algorithmen</p>
+            </div>
+        </div>
+
+        <!-- Timer & Controls -->
+        <div class="flex items-center space-x-3 md:space-x-5">
+            <!-- Active Timer Status -->
+            <div id="timerDisplayContainer" class="hidden flex items-center bg-slate-800/90 px-3 md:px-4 py-1.5 md:py-2 rounded-xl border border-slate-700 shadow-inner">
+                <i class="fa-regular fa-clock text-amber-400 mr-2 text-base md:text-lg"></i>
+                <span class="text-xs md:text-sm font-semibold text-slate-300 mr-1 hidden sm:inline">Restzeit:</span>
+                <span id="timerText" class="text-base md:text-lg font-bold text-amber-400">30 Min</span>
+            </div>
+
+            <!-- Sound Toggle Button -->
+            <button id="btnSoundToggle" onclick="toggleSound()" class="tv-focusable bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-300 p-2.5 md:p-3 rounded-xl border border-slate-700 flex items-center justify-center">
+                <i id="soundIcon" class="fa-solid fa-volume-high text-amber-400 text-base"></i>
+            </button>
+
+            <!-- Parent Access PIN Button -->
+            <button id="btnParentArea" onclick="openParentModal()" 
+                    class="tv-focusable bg-slate-800 hover:bg-slate-700 active:scale-95 text-slate-200 px-3 md:px-5 py-2 md:py-2.5 rounded-xl border border-slate-700 font-semibold flex items-center space-x-2 text-xs md:text-sm shadow-md">
+                <i class="fa-solid fa-lock text-amber-400"></i>
+                <span class="font-bold">Eltern</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col overflow-hidden p-4 md:p-6 relative">
+        
+        <!-- Horizontal Scrollable Category Chips -->
+        <div class="flex items-center space-x-2 md:space-x-3 mb-4 md:mb-6 overflow-x-auto pb-2 shrink-0 px-1" id="categoryContainer">
+            <!-- Categories rendered dynamically -->
+        </div>
+
+        <!-- Touch-Optimized Video Grid -->
+        <div id="videoGrid" class="flex-1 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6 overflow-y-auto p-1 pr-2">
+            <!-- Video Cards injected here via JavaScript -->
+        </div>
+
+        <!-- Empty State View -->
+        <div id="emptyState" class="hidden flex-1 flex flex-col items-center justify-center text-center p-6">
+            <div class="w-20 h-20 bg-slate-800/80 rounded-3xl flex items-center justify-center text-amber-400 text-3xl mb-4 border border-slate-700 shadow-xl">
+                <i class="fa-solid fa-film"></i>
+            </div>
+            <h2 class="text-xl md:text-2xl font-bold text-slate-200 mb-2">Keine Videos in dieser Kategorie</h2>
+            <p class="text-slate-400 max-w-sm text-xs md:text-sm mb-6">Öffne den Eltern-Bereich mit der PIN, um neue Videos oder YouTube-Kanäle hinzuzufügen.</p>
+            <button onclick="openParentModal()" class="tv-focusable bg-amber-500 text-slate-950 font-bold px-6 py-3 rounded-xl hover:bg-amber-400 shadow-lg active:scale-95 text-sm">
+                <i class="fa-solid fa-plus mr-2"></i> Videos hinzufügen
+            </button>
+        </div>
+    </main>
+
+    <!-- Tablet Footer / Status Bar -->
+    <footer class="h-10 md:h-12 bg-slate-900/90 border-t border-slate-800 px-4 md:px-8 flex items-center justify-between text-xs text-slate-400 shrink-0">
+        <div class="flex items-center space-x-2">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="font-bold text-slate-300">Kinder-Geschützter Modus</span>
+        </div>
+        <div class="flex items-center space-x-3">
+            <span id="videoCountBadge" class="bg-slate-800 text-slate-300 px-3 py-1 rounded-full font-semibold border border-slate-700/60 text-[11px]">0 Videos verfügbar</span>
+        </div>
+    </footer>
+
+    <!-- Fullscreen Tablet Video Player -->
+    <div id="playerModal" class="fixed inset-0 bg-black z-50 hidden flex flex-col">
+        <!-- Video Header Controls -->
+        <div id="playerHeader" class="h-16 px-4 md:px-6 bg-gradient-to-b from-black/90 via-black/50 to-transparent flex items-center justify-between absolute top-0 left-0 right-0 z-20 transition-opacity duration-300">
+            <button id="btnBackFromPlayer" onclick="closePlayer()" class="tv-focusable bg-slate-900/90 hover:bg-slate-800 text-white border border-slate-700 px-4 py-2 rounded-xl flex items-center space-x-2 font-bold text-xs md:text-sm shadow-xl active:scale-95">
+                <i class="fa-solid fa-arrow-left text-amber-400"></i>
+                <span>Zurück</span>
+            </button>
+            
+            <h2 id="playerVideoTitle" class="text-sm md:text-base font-bold text-amber-300 truncate max-w-xs md:max-w-lg px-2">Video Titel</h2>
+            
+            <!-- Child Touch Lock Toggle -->
+            <button id="btnToggleChildLock" onclick="toggleChildLock()" class="tv-focusable bg-slate-900/90 hover:bg-slate-800 text-amber-400 border border-slate-700 px-3 py-2 rounded-xl flex items-center space-x-1.5 font-bold text-xs md:text-sm shadow-xl">
+                <i id="childLockIcon" class="fa-solid fa-lock-open text-slate-300"></i>
+                <span id="childLockText" class="hidden sm:inline">Kindersperre</span>
+            </button>
+        </div>
+
+        <!-- YouTube Video Frame Container -->
+        <div class="flex-1 w-full h-full relative flex items-center justify-center bg-black">
+            <div id="youtubePlayerHost" class="w-full h-full"></div>
+            
+            <!-- Touch Lock Transparent Overlay Screen (When Child Lock is active) -->
+            <div id="touchLockOverlay" class="hidden absolute inset-0 z-30 bg-black/5 flex flex-col items-center justify-center">
+                <button onclick="promptUnlockChildLock()" class="bg-amber-500/90 text-slate-950 font-bold px-6 py-3 rounded-2xl shadow-2xl border-2 border-amber-300 flex items-center space-x-3 active:scale-95 lock-pulse">
+                    <i class="fa-solid fa-lock text-xl"></i>
+                    <span>Bildschirm gesperrt (Tippen zum Entsperren)</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Parent PIN Modal -->
+    <div id="pinModal" class="fixed inset-0 bg-slate-950/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4 fade-in">
+        <div class="bg-slate-900 border border-slate-800 rounded-3xl p-6 md:p-8 max-w-sm w-full shadow-2xl text-center">
+            <div class="w-14 h-14 bg-amber-500/10 text-amber-400 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-amber-500/20 text-2xl shadow-lg">
+                <i class="fa-solid fa-user-shield"></i>
+            </div>
+            <h2 class="text-xl md:text-2xl font-bold text-white mb-1">Eltern-Sicherung</h2>
+            <p class="text-slate-400 text-xs mb-5">PIN eingeben (Standard: <strong class="text-amber-400">1234</strong>)</p>
+
+            <!-- PIN Indicator Dots -->
+            <div class="flex justify-center space-x-3 mb-6">
+                <div id="pinDot0" class="w-4 h-4 rounded-full border-2 border-slate-700 bg-slate-800 transition-all"></div>
+                <div id="pinDot1" class="w-4 h-4 rounded-full border-2 border-slate-700 bg-slate-800 transition-all"></div>
+                <div id="pinDot2" class="w-4 h-4 rounded-full border-2 border-slate-700 bg-slate-800 transition-all"></div>
+                <div id="pinDot3" class="w-4 h-4 rounded-full border-2 border-slate-700 bg-slate-800 transition-all"></div>
+            </div>
+
+            <!-- Touch Numpad Grid -->
+            <div class="grid grid-cols-3 gap-2.5 mb-5">
+                <button onclick="pressPinDigit('1')" class="tv-focusable bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold py-3.5 rounded-2xl border border-slate-700 text-xl">1</button>
+                <button onclick="pressPinDigit('2')" class="tv-focusable bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold py-3.5 rounded-2xl border border-slate-700 text-xl">2</button>
+                <button onclick="pressPinDigit('3')" class="tv-focusable bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold py-3.5 rounded-2xl border border-slate-700 text-xl">3</button>
+                <button onclick="pressPinDigit('4')" class="tv-focusable bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold py-3.5 rounded-2xl border border-slate-700 text-xl">4</button>
+                <button onclick="pressPinDigit('5')" class="tv-focusable bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold py-3.5 rounded-2xl border border-slate-700 text-xl">5</button>
+                <button onclick="pressPinDigit('6')" class="tv-focusable bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold py-3.5 rounded-2xl border border-slate-700 text-xl">6</button>
+                <button onclick="pressPinDigit('7')" class="tv-focusable bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold py-3.5 rounded-2xl border border-slate-700 text-xl">7</button>
+                <button onclick="pressPinDigit('8')" class="tv-focusable bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold py-3.5 rounded-2xl border border-slate-700 text-xl">8</button>
+                <button onclick="pressPinDigit('9')" class="tv-focusable bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold py-3.5 rounded-2xl border border-slate-700 text-xl">9</button>
+                <button onclick="clearPin()" class="tv-focusable bg-rose-500/20 text-rose-400 font-bold py-3.5 rounded-2xl border border-rose-500/30 text-xs">Löschen</button>
+                <button onclick="pressPinDigit('0')" class="tv-focusable bg-slate-800 hover:bg-slate-700 active:scale-95 text-white font-bold py-3.5 rounded-2xl border border-slate-700 text-xl">0</button>
+                <button onclick="closePinModal()" class="tv-focusable bg-slate-800 hover:bg-slate-700 text-slate-400 font-bold py-3.5 rounded-2xl border border-slate-700 text-xs">Abbrechen</button>
+            </div>
+
+            <p id="pinError" class="text-rose-400 text-xs hidden font-bold">Falsche PIN! Bitte erneut versuchen.</p>
+        </div>
+    </div>
+
+    <!-- Parent Dashboard Modal -->
+    <div id="parentDashboardModal" class="fixed inset-0 bg-slate-950/95 backdrop-blur-md z-50 hidden flex flex-col p-4 md:p-6 fade-in overflow-hidden">
+        <!-- Header -->
+        <div class="flex items-center justify-between pb-3 border-b border-slate-800 mb-4 shrink-0">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-amber-500/20 text-amber-400 rounded-xl flex items-center justify-center font-bold">
+                    <i class="fa-solid fa-sliders text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="text-lg md:text-xl font-bold text-white leading-tight">Eltern-Verwaltung & Inhalte</h2>
+                    <p class="text-[11px] text-slate-400">Videos freigeben, Limits festlegen & Einstellungen</p>
+                </div>
+            </div>
+            <button onclick="closeParentDashboard()" class="tv-focusable bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-xl border border-slate-700 font-bold text-xs md:text-sm active:scale-95">
+                <i class="fa-solid fa-check mr-1 text-emerald-400"></i> Fertig
+            </button>
+        </div>
+
+        <!-- Dashboard Content Grid -->
+        <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 overflow-hidden">
+            <!-- Left Column: Add Videos & Timer Settings -->
+            <div class="lg:col-span-5 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 md:p-5 flex flex-col overflow-y-auto space-y-5">
+                
+                <!-- Add Video Section -->
+                <div>
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2.5 flex items-center">
+                        <i class="fa-solid fa-plus-circle mr-2"></i> Neues Video freigeben
+                    </h3>
+                    <div class="space-y-2.5 text-xs">
+                        <div>
+                            <label class="block text-slate-400 mb-1">YouTube Link oder Video ID:</label>
+                            <input type="text" id="inputYtUrl" placeholder="https://www.youtube.com/watch?v=..." 
+                                   class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-400 text-xs md:text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-slate-400 mb-1">Titel (optional):</label>
+                            <input type="text" id="inputVideoTitle" placeholder="Titel des Videos" 
+                                   class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-400 text-xs md:text-sm">
+                        </div>
+                        <div class="grid grid-cols-2 gap-2.5">
+                            <div>
+                                <label class="block text-slate-400 mb-1">Kategorie:</label>
+                                <select id="selectCategory" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-400 text-xs md:text-sm">
+                                    <option value="Zeichentrick">🎨 Zeichentrick</option>
+                                    <option value="Lernen">📚 Lernen</option>
+                                    <option value="Musik">🎵 Musik</option>
+                                    <option value="Tiere">🐾 Tiere</option>
+                                    <option value="Sonstiges">⭐ Sonstiges</option>
+                                </select>
+                            </div>
+                            <div class="flex items-end">
+                                <button onclick="addNewVideoFromInput()" 
+                                        class="tv-focusable w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold p-3 rounded-xl flex items-center justify-center space-x-1 shadow-md text-xs md:text-sm">
+                                    <i class="fa-solid fa-plus"></i>
+                                    <span>Hinzufügen</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-slate-800">
+
+                <!-- Timer Section -->
+                <div>
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2.5 flex items-center">
+                        <i class="fa-solid fa-hourglass-half mr-2"></i> Zeit-Limit (Timer)
+                    </h3>
+                    <div class="flex items-center space-x-2.5">
+                        <select id="selectTimerDuration" class="flex-1 bg-slate-950 border border-slate-700 rounded-xl p-3 text-white focus:outline-none focus:border-amber-400 text-xs md:text-sm">
+                            <option value="0">Kein Limit</option>
+                            <option value="15">15 Minuten</option>
+                            <option value="30" selected>30 Minuten</option>
+                            <option value="45">45 Minuten</option>
+                            <option value="60">60 Minuten</option>
+                        </select>
+                        <button onclick="applyTimerSetting()" class="tv-focusable bg-slate-800 hover:bg-slate-700 border border-slate-700 text-amber-400 font-bold px-4 py-3 rounded-xl text-xs md:text-sm">
+                            Aktivieren
+                        </button>
+                    </div>
+                </div>
+
+                <hr class="border-slate-800">
+
+                <!-- Management & Backup Section -->
+                <div>
+                    <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-2.5 flex items-center">
+                        <i class="fa-solid fa-gear mr-2"></i> Datensicherung & PIN
+                    </h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button onclick="exportDataJSON()" class="tv-focusable bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 p-2.5 rounded-xl text-xs font-semibold">
+                            <i class="fa-solid fa-download mr-1"></i> Liste Exportieren
+                        </button>
+                        <button onclick="importDataJSONPrompt()" class="tv-focusable bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 p-2.5 rounded-xl text-xs font-semibold">
+                            <i class="fa-solid fa-upload mr-1"></i> Liste Importieren
+                        </button>
+                        <button onclick="changePinPrompt()" class="tv-focusable bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 p-2.5 rounded-xl text-xs font-semibold col-span-2">
+                            <i class="fa-solid fa-key mr-1"></i> PIN ändern
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Column: List of Approved Videos -->
+            <div class="lg:col-span-7 bg-slate-900/80 border border-slate-800 rounded-2xl p-4 md:p-5 flex flex-col overflow-hidden">
+                <h3 class="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3 flex items-center shrink-0">
+                    <i class="fa-solid fa-list-check mr-2"></i> Freigegebene Videos (<span id="manageCount">0</span>)
+                </h3>
+                <div id="parentVideoList" class="flex-1 overflow-y-auto space-y-2 pr-1">
+                    <!-- Dynamic Parent Manage List -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Time's Up Screen Modal -->
+    <div id="timesUpModal" class="fixed inset-0 bg-slate-950/98 z-50 hidden flex flex-col items-center justify-center p-6 text-center fade-in">
+        <div class="w-24 h-24 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mb-5 border-2 border-amber-500/40 text-4xl pulse-subtle">
+            <i class="fa-solid fa-moon"></i>
+        </div>
+        <h1 class="text-3xl md:text-4xl font-bold text-amber-400 mb-2">Zeit für eine Pause!</h1>
+        <p class="text-slate-300 text-sm md:text-base max-w-sm mb-6">Deine Bildschirmzeit für heute ist abgelaufen. Zeit zum Spielen, Lesen oder Schlafen!</p>
+        <button onclick="openParentModal()" class="tv-focusable bg-amber-500 text-slate-950 font-bold text-base px-8 py-3.5 rounded-2xl hover:bg-amber-400 shadow-xl active:scale-95">
+            <i class="fa-solid fa-key mr-2"></i> Eltern-Entsperrung
+        </button>
+    </div>
+
+    <!-- Custom Toast Message -->
+    <div id="toast" class="fixed bottom-14 right-6 bg-amber-500 text-slate-950 font-bold px-4 py-2.5 rounded-xl shadow-2xl z-50 hidden flex items-center space-x-2 text-xs md:text-sm">
+        <i class="fa-solid fa-circle-info"></i>
+        <span id="toastMsg">Meldung</span>
+    </div>
+
+    <script>
+        // Pre-approved safe German Children Videos
+        const DEFAULT_VIDEOS = [
+            {
+                id: "2v-eOnWInaI",
+                title: "Die Sendung mit der Maus - Sachgeschichte",
+                category: "Lernen",
+                thumbnail: "https://img.youtube.com/vi/2v-eOnWInaI/hqdefault.jpg"
+            },
+            {
+                id: "B8kP7W-4dZ8",
+                title: "Löwenzahn - Entdecker Geschichten",
+                category: "Lernen",
+                thumbnail: "https://img.youtube.com/vi/B8kP7W-4dZ8/hqdefault.jpg"
+            },
+            {
+                id: "pT753iG32j8",
+                title: "Bobo Siebenschläfer - Ganze Folgen",
+                category: "Zeichentrick",
+                thumbnail: "https://img.youtube.com/vi/pT753iG32j8/hqdefault.jpg"
+            },
+            {
+                id: "O8xG7mJ4eNE",
+                title: "Janoschs Traumstunde - Geschichten",
+                category: "Zeichentrick",
+                thumbnail: "https://img.youtube.com/vi/O8xG7mJ4eNE/hqdefault.jpg"
+            },
+            {
+                id: "f3uS7eS-T_M",
+                title: "Die besten Kinderlieder zum Mitsingen",
+                category: "Musik",
+                thumbnail: "https://img.youtube.com/vi/f3uS7eS-T_M/hqdefault.jpg"
+            },
+            {
+                id: "5v80m1s-Z8k",
+                title: "Tierwelt für Kinder - Heimische Wildtiere",
+                category: "Tiere",
+                thumbnail: "https://img.youtube.com/vi/5v80m1s-Z8k/hqdefault.jpg"
+            }
+        ];
+
+        const CATEGORIES = ["Alle", "Zeichentrick", "Lernen", "Musik", "Tiere", "Sonstiges"];
+
+        // State Variables
+        let videos = [];
+        let currentCategory = "Alle";
+        let parentPin = "1234";
+        let enteredPin = "";
+        let activeVideoId = null;
+        let timerMinutes = 0;
+        let remainingSeconds = 0;
+        let timerInterval = null;
+        let isSoundEnabled = true;
+        let isChildLockActive = false;
+
+        // Web Audio Synthesizer for Touch Cues (No external mp3 files needed)
+        let audioCtx = null;
+
+        function playSound(type) {
+            if (!isSoundEnabled) return;
+            try {
+                if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+
+                if (type === 'click') {
+                    osc.frequency.setValueAtTime(440, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(880, audioCtx.currentTime + 0.05);
+                    gain.gain.setValueAtTime(0.15, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.05);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.05);
+                } else if (type === 'success') {
+                    osc.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
+                    osc.frequency.setValueAtTime(659.25, audioCtx.currentTime + 0.08); // E5
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.2);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.2);
+                }
+            } catch(e) {}
+        }
+
+        function toggleSound() {
+            isSoundEnabled = !isSoundEnabled;
+            const icon = document.getElementById("soundIcon");
+            if (isSoundEnabled) {
+                icon.className = "fa-solid fa-volume-high text-amber-400";
+                showToast("Ton aktiviert");
+                playSound('click');
+            } else {
+                icon.className = "fa-solid fa-volume-xmark text-slate-500";
+                showToast("Ton stummgeschaltet");
+            }
+        }
+
+        // Initialize App
+        document.addEventListener("DOMContentLoaded", () => {
+            loadSavedData();
+            renderCategories();
+            renderVideos();
+        });
+
+        function loadSavedData() {
+            const savedVideos = localStorage.getItem("kindertube_videos");
+            if (savedVideos) {
+                try {
+                    videos = JSON.parse(savedVideos);
+                } catch(e) {
+                    videos = [...DEFAULT_VIDEOS];
+                }
+            } else {
+                videos = [...DEFAULT_VIDEOS];
+                saveVideos();
+            }
+
+            const savedPin = localStorage.getItem("kindertube_pin");
+            if (savedPin) {
+                parentPin = savedPin;
+            }
+        }
+
+        function saveVideos() {
+            localStorage.setItem("kindertube_videos", JSON.stringify(videos));
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById("toast");
+            const toastMsg = document.getElementById("toastMsg");
+            toastMsg.innerText = msg;
+            toast.classList.remove("hidden");
+            setTimeout(() => {
+                toast.classList.add("hidden");
+            }, 2500);
+        }
+
+        function renderCategories() {
+            const container = document.getElementById("categoryContainer");
+            container.innerHTML = "";
+
+            CATEGORIES.forEach(cat => {
+                const isSelected = (cat === currentCategory);
+                const btn = document.createElement("button");
+                btn.className = `tv-focusable category-chip font-bold px-4 md:px-5 py-2 md:py-2.5 rounded-2xl text-xs md:text-sm whitespace-nowrap transition-all border ${
+                    isSelected 
+                    ? 'active-chip border-amber-400 shadow-md' 
+                    : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800'
+                }`;
+                btn.innerText = cat;
+                btn.onclick = () => {
+                    playSound('click');
+                    currentCategory = cat;
+                    renderCategories();
+                    renderVideos();
+                };
+                container.appendChild(btn);
+            });
+        }
+
+        function renderVideos() {
+            const grid = document.getElementById("videoGrid");
+            const emptyState = document.getElementById("emptyState");
+            const countBadge = document.getElementById("videoCountBadge");
+            
+            grid.innerHTML = "";
+
+            const filtered = currentCategory === "Alle" 
+                ? videos 
+                : videos.filter(v => v.category === currentCategory);
+
+            countBadge.innerText = `${filtered.length} Videos verfügbar`;
+
+            if (filtered.length === 0) {
+                grid.classList.add("hidden");
+                emptyState.classList.remove("hidden");
+                return;
+            }
+
+            grid.classList.remove("hidden");
+            emptyState.classList.add("hidden");
+
+            filtered.forEach(vid => {
+                const card = document.createElement("div");
+                card.className = "tv-focusable bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden group cursor-pointer flex flex-col transition-all active:scale-95 shadow-lg hover:border-amber-500/50";
+                
+                const thumb = vid.thumbnail || `https://img.youtube.com/vi/${vid.id}/hqdefault.jpg`;
+                
+                card.innerHTML = `
+                    <div class="relative aspect-video w-full bg-slate-950 overflow-hidden">
+                        <img src="${thumb}" alt="${vid.title}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" 
+                             onerror="this.src='https://placehold.co/600x400/0f172a/fbbf24?text=KinderTV'">
+                        <div class="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent opacity-70"></div>
+                        <div class="absolute bottom-2.5 right-2.5 w-9 h-9 md:w-10 md:h-10 bg-amber-500 text-slate-950 rounded-full flex items-center justify-center shadow-lg transform group-hover:scale-110 transition-transform">
+                            <i class="fa-solid fa-play ml-0.5 text-xs md:text-sm"></i>
+                        </div>
+                        <span class="absolute top-2.5 left-2.5 bg-slate-900/90 text-amber-400 text-[10px] md:text-xs font-extrabold px-2.5 py-1 rounded-lg border border-slate-700/80 shadow">
+                            ${vid.category}
+                        </span>
+                    </div>
+                    <div class="p-3 md:p-4 flex-1 flex flex-col justify-between">
+                        <h3 class="font-bold text-slate-100 line-clamp-2 text-xs md:text-sm group-hover:text-amber-400 transition-colors">${vid.title}</h3>
+                    </div>
+                `;
+
+                card.onclick = () => {
+                    playSound('click');
+                    playVideo(vid.id, vid.title);
+                };
+                grid.appendChild(card);
+            });
+        }
+
+        function playVideo(id, title) {
+            activeVideoId = id;
+            isChildLockActive = false;
+            updateChildLockUI();
+
+            document.getElementById("playerVideoTitle").innerText = title;
+            const modal = document.getElementById("playerModal");
+            modal.classList.remove("hidden");
+
+            const playerHost = document.getElementById("youtubePlayerHost");
+            playerHost.innerHTML = `<iframe id="ytIframe" class="w-full h-full" 
+                src="https://www.youtube-nocookie.com/embed/${id}?autoplay=1&controls=1&rel=0&modestbranding=1&enablejsapi=1" 
+                frameborder="0" allow="autoplay; encrypted-media" allowfullscreen></iframe>`;
+        }
+
+        function closePlayer() {
+            playSound('click');
+            const modal = document.getElementById("playerModal");
+            modal.classList.add("hidden");
+            document.getElementById("youtubePlayerHost").innerHTML = "";
+            activeVideoId = null;
+            isChildLockActive = false;
+            updateChildLockUI();
+        }
+
+        function toggleChildLock() {
+            playSound('click');
+            isChildLockActive = !isChildLockActive;
+            updateChildLockUI();
+            if (isChildLockActive) {
+                showToast("Kindersperre AKTIV: Touchscreen geschützt!");
+            }
+        }
+
+        function updateChildLockUI() {
+            const overlay = document.getElementById("touchLockOverlay");
+            const header = document.getElementById("playerHeader");
+            const lockIcon = document.getElementById("childLockIcon");
+            const lockText = document.getElementById("childLockText");
+
+            if (isChildLockActive) {
+                overlay.classList.remove("hidden");
+                lockIcon.className = "fa-solid fa-lock text-rose-400";
+                lockText.innerText = "Gesperrt";
+                header.classList.add("opacity-30");
+            } else {
+                overlay.classList.add("hidden");
+                lockIcon.className = "fa-solid fa-lock-open text-slate-300";
+                lockText.innerText = "Kindersperre";
+                header.classList.remove("opacity-30");
+            }
+        }
+
+        function promptUnlockChildLock() {
+            playSound('click');
+            isChildLockActive = false;
+            updateChildLockUI();
+            showToast("Kindersperre aufgehoben!");
+        }
+
+        function openParentModal() {
+            playSound('click');
+            enteredPin = "";
+            updatePinDots();
+            document.getElementById("pinError").classList.add("hidden");
+            document.getElementById("pinModal").classList.remove("hidden");
+        }
+
+        function closePinModal() {
+            playSound('click');
+            document.getElementById("pinModal").classList.add("hidden");
+        }
+
+        function pressPinDigit(digit) {
+            playSound('click');
+            if (enteredPin.length < 4) {
+                enteredPin += digit;
+                updatePinDots();
+                if (enteredPin.length === 4) {
+                    verifyPin();
+                }
+            }
+        }
+
+        function clearPin() {
+            playSound('click');
+            enteredPin = "";
+            updatePinDots();
+            document.getElementById("pinError").classList.add("hidden");
+        }
+
+        function updatePinDots() {
+            for (let i = 0; i < 4; i++) {
+                const dot = document.getElementById(`pinDot${i}`);
+                if (i < enteredPin.length) {
+                    dot.className = "w-4 h-4 rounded-full bg-amber-400 border-2 border-amber-400 shadow-md shadow-amber-400/50 scale-110";
+                } else {
+                    dot.className = "w-4 h-4 rounded-full border-2 border-slate-700 bg-slate-800";
+                }
+            }
+        }
+
+        function verifyPin() {
+            if (enteredPin === parentPin) {
+                playSound('success');
+                closePinModal();
+                openParentDashboard();
+            } else {
+                document.getElementById("pinError").classList.remove("hidden");
+                setTimeout(() => {
+                    clearPin();
+                }, 700);
+            }
+        }
+
+        function openParentDashboard() {
+            renderParentVideoList();
+            document.getElementById("parentDashboardModal").classList.remove("hidden");
+        }
+
+        function closeParentDashboard() {
+            playSound('click');
+            document.getElementById("parentDashboardModal").classList.add("hidden");
+            renderVideos();
+        }
+
+        function extractYtId(url) {
+            if (!url) return null;
+            const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+            const match = url.match(regExp);
+            return (match && match[2].length === 11) ? match[2] : (url.length === 11 ? url : null);
+        }
+
+        function addNewVideoFromInput() {
+            playSound('click');
+            const urlInput = document.getElementById("inputYtUrl");
+            const titleInput = document.getElementById("inputVideoTitle");
+            const catSelect = document.getElementById("selectCategory");
+
+            const rawUrl = urlInput.value.trim();
+            const videoId = extractYtId(rawUrl);
+
+            if (!videoId) {
+                showToast("Ungültige YouTube URL oder Video ID!");
+                return;
+            }
+
+            const customTitle = titleInput.value.trim() || `Kinder Video (${videoId})`;
+            const category = catSelect.value;
+
+            const newVid = {
+                id: videoId,
+                title: customTitle,
+                category: category,
+                thumbnail: `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`
+            };
+
+            videos.unshift(newVid);
+            saveVideos();
+
+            urlInput.value = "";
+            titleInput.value = "";
+
+            renderParentVideoList();
+            showToast("Video erfolgreich freigegeben!");
+        }
+
+        function deleteVideo(id) {
+            playSound('click');
+            videos = videos.filter(v => v.id !== id);
+            saveVideos();
+            renderParentVideoList();
+            showToast("Video entfernt.");
+        }
+
+        function renderParentVideoList() {
+            const list = document.getElementById("parentVideoList");
+            const count = document.getElementById("manageCount");
+            count.innerText = videos.length;
+            list.innerHTML = "";
+
+            videos.forEach(v => {
+                const item = document.createElement("div");
+                item.className = "bg-slate-950 border border-slate-800 rounded-xl p-2.5 md:p-3 flex items-center justify-between space-x-3";
+                item.innerHTML = `
+                    <div class="flex items-center space-x-3 overflow-hidden">
+                        <img src="${v.thumbnail}" class="w-14 h-9 md:w-16 md:h-10 object-cover rounded-lg shrink-0" onerror="this.src='https://placehold.co/100x60/0f172a/fbbf24?text=TV'">
+                        <div class="truncate">
+                            <h4 class="font-bold text-slate-200 text-xs truncate">${v.title}</h4>
+                            <span class="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">${v.category}</span>
+                        </div>
+                    </div>
+                    <button onclick="deleteVideo('${v.id}')" class="tv-focusable bg-rose-500/20 hover:bg-rose-500 text-rose-400 hover:text-white border border-rose-500/30 px-3 py-1.5 rounded-lg text-xs font-bold shrink-0">
+                        <i class="fa-solid fa-trash"></i>
+                    </button>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        function applyTimerSetting() {
+            playSound('click');
+            const duration = parseInt(document.getElementById("selectTimerDuration").value, 10);
+            const timerContainer = document.getElementById("timerDisplayContainer");
+            
+            if (timerInterval) clearInterval(timerInterval);
+
+            if (duration === 0) {
+                timerContainer.classList.add("hidden");
+                showToast("Timer deaktiviert.");
+                return;
+            }
+
+            remainingSeconds = duration * 60;
+            timerContainer.classList.remove("hidden");
+            updateTimerLabel();
+
+            timerInterval = setInterval(() => {
+                remainingSeconds--;
+                updateTimerLabel();
+
+                if (remainingSeconds <= 0) {
+                    clearInterval(timerInterval);
+                    closePlayer();
+                    closeParentDashboard();
+                    document.getElementById("timesUpModal").classList.remove("hidden");
+                }
+            }, 1000);
+
+            showToast(`Timer auf ${duration} Min gestellt.`);
+        }
+
+        function updateTimerLabel() {
+            const mins = Math.floor(remainingSeconds / 60);
+            const secs = remainingSeconds % 60;
+            const text = `${mins}:${secs < 10 ? '0' : ''}${secs}`;
+            document.getElementById("timerText").innerText = text;
+        }
+
+        function exportDataJSON() {
+            playSound('click');
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(videos, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", "kindertube_tablet_freigaben.json");
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+            showToast("Freigabeliste heruntergeladen!");
+        }
+
+        function importDataJSONPrompt() {
+            playSound('click');
+            const jsonText = prompt("Füge den JSON-Code der Freigabeliste hier ein:");
+            if (jsonText) {
+                try {
+                    const parsed = JSON.parse(jsonText);
+                    if (Array.isArray(parsed)) {
+                        videos = parsed;
+                        saveVideos();
+                        renderParentVideoList();
+                        showToast("Freigaben erfolgreich importiert!");
+                    } else {
+                        showToast("Ungültiges Datenformat!");
+                    }
+                } catch(e) {
+                    showToast("Fehler beim Lesen des JSON-Codes!");
+                }
+            }
+        }
+
+        function changePinPrompt() {
+            playSound('click');
+            const newPin = prompt("Gib eine neue 4-stellige Zahlen-PIN ein:", parentPin);
+            if (newPin && newPin.length === 4 && !isNaN(newPin)) {
+                parentPin = newPin;
+                localStorage.setItem("kindertube_pin", newPin);
+                showToast("PIN erfolgreich geändert!");
+            } else if (newPin) {
+                showToast("Die PIN muss genau 4 Zahlen enthalten!");
+            }
+        }
+    </script>
+</body>
+</html>
