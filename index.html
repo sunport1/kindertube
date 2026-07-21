@@ -1,180 +1,4 @@
-<!DOCTYPE html>
-<html lang="de">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KinderTube Safe Tablet</title>
-    
-    <!-- Tailwind CSS CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            blue: '#4A90E2',
-                            green: '#7ED321',
-                            yellow: '#F5A623',
-                            purple: '#9013FE',
-                            pink: '#FF4081',
-                            dark: '#1F2937'
-                        }
-                    }
-                }
-            }
-        }
-    </script>
-    
-    <!-- FontAwesome für Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
-
-    <!-- Firebase SDK Modular -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // Firebase Initialisierung
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            // Fallback Test Config (falls lokal)
-            apiKey: "demo-api-key",
-            authDomain: "demo-app.firebaseapp.com",
-            projectId: "demo-app",
-            storageBucket: "demo-app.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:123456789"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'kindertube-default-app';
-
-        window.firebaseCore = {
-            auth,
-            db,
-            appId,
-            doc,
-            setDoc,
-            onSnapshot,
-            signInAnonymously,
-            signInWithCustomToken,
-            onAuthStateChanged
-        };
-    </script>
-
-    <style>
-        body {
-            font-family: 'Fredoka', cursive, sans-serif;
-            user-select: none;
-            -webkit-user-select: none;
-            touch-action: manipulation;
-        }
-        .touch-card:active {
-            transform: scale(0.96);
-            transition: transform 0.1s ease;
-        }
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: rgba(0,0,0,0.05);
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: rgba(0,0,0,0.2);
-            border-radius: 10px;
-        }
-    </style>
-</head>
-<body class="bg-slate-900 text-white min-h-screen flex flex-col overflow-x-hidden selection:bg-pink-500 selection:text-white">
-
-    <!-- APP HEADER -->
-    <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700 px-4 py-3 sticky top-0 z-30 flex items-center justify-between shadow-lg">
-        <div class="flex items-center space-x-3 cursor-pointer" onclick="app.showHome()">
-            <div class="w-10 h-10 bg-gradient-to-tr from-pink-500 to-yellow-400 rounded-2xl flex items-center justify-center shadow-md transform -rotate-3">
-                <i class="fa-solid font-bold fa-play text-white text-xl"></i>
-            </div>
-            <div>
-                <h1 class="text-xl font-bold tracking-wide bg-gradient-to-r from-pink-400 via-yellow-300 to-green-400 bg-clip-text text-transparent">
-                    KinderTube
-                </h1>
-                <p class="text-xs text-slate-400 font-medium flex items-center space-x-1">
-                    <span>Cloud Synced</span>
-                    <i id="cloudStatusIcon" class="fa-solid fa-cloud text-green-400 text-[10px]" title="Mit Cloud verbunden"></i>
-                </p>
-            </div>
-        </div>
-
-        <!-- System Controls & Time Monitor -->
-        <div class="flex items-center space-x-3">
-            <!-- Restzeit-Anzeige -->
-            <div id="timeStatusBadge" class="hidden sm:flex items-center space-x-2 bg-slate-700/80 px-3 py-1.5 rounded-full border border-slate-600 text-sm">
-                <i class="fa-solid fa-clock text-yellow-400"></i>
-                <span id="remainingTimeText" class="font-bold">-- Min</span>
-            </div>
-
-            <!-- Home Button -->
-            <button onclick="app.showHome()" class="p-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl transition text-slate-200">
-                <i class="fa-solid fa-house text-lg"></i>
-            </button>
-
-            <!-- Elternbereich (PIN Protected) -->
-            <button onclick="app.openAdminModal()" class="p-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl transition text-white shadow-md flex items-center space-x-2">
-                <i class="fa-solid fa-user-shield text-lg"></i>
-                <span class="hidden md:inline text-sm font-semibold">Elternbereich</span>
-            </button>
-        </div>
-    </header>
-
-    <!-- MAIN CONTENT AREA -->
-    <main class="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
-
-        <!-- SPERR-BILDSCHIRM (ZEITFENSTER / TIMER ABGELAUFEN) -->
-        <div id="lockScreen" class="hidden fixed inset-0 z-50 bg-slate-950 flex flex-col items-center justify-center p-6 text-center">
-            <div class="w-24 h-24 bg-indigo-900/50 rounded-full flex items-center justify-center text-indigo-400 text-5xl mb-6 border-2 border-indigo-500/30 animate-pulse">
-                <i id="lockScreenIcon" class="fa-solid fa-moon"></i>
-            </div>
-            <h2 id="lockScreenTitle" class="text-3xl md:text-4xl font-bold mb-3 text-indigo-200">Schlafenszeit!</h2>
-            <p id="lockScreenMessage" class="text-slate-400 max-w-md text-lg mb-8">
-                Die Bildschirmzeit für heute ist abgelaufen oder das erlaubte Zeitfenster ist überschritten.
-            </p>
-            <button onclick="app.openAdminModal()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-2xl shadow-lg transition transform active:scale-95">
-                <i class="fa-solid fa-key mr-2"></i> Eltern-Freigabe
-            </button>
-        </div>
-
-        <!-- HOME VIEW (KATEGORIEN & VIDEOS) -->
-        <div id="homeView" class="space-y-6">
-            
-            <!-- Category Filter Bar -->
-            <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none" id="categoryFilterContainer">
-                <!-- Dynamisch erzeugt -->
-            </div>
-
-            <!-- Video Grid -->
-            <div id="videoGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
-                <!-- Dynamische Video Kacheln -->
-            </div>
-
-            <!-- Empty State -->
-            <div id="emptyState" class="hidden flex-col items-center justify-center py-16 text-center space-y-4">
-                <div class="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center text-slate-500 text-3xl">
-                    <i class="fa-solid fa-film"></i>
-                </div>
-                <h3 class="text-xl font-bold text-slate-300">Keine Videos gefunden</h3>
-                <p class="text-slate-500 max-w-sm">Es wurden noch keine Videos in dieser Kategorie freigegeben.</p>
-                <button onclick="app.openAdminModal()" class="mt-2 bg-indigo-600 hover:bg-indigo-500 px-5 py-2.5 rounded-xl font-bold text-sm">
-                    Videos im Elternbereich hinzufügen
-                </button>
-            </div>
-        </div>
-
+<!-- ... existing code ... -->
         <!-- PLAYER VIEW (ISOLIERTER PLAYER OHNE YOUTUBE-KLICKS) -->
         <div id="playerView" class="hidden flex-col space-y-4">
             <button onclick="app.showHome()" class="self-start flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 px-4 py-2.5 rounded-xl font-bold text-slate-200 transition touch-card">
@@ -182,174 +6,71 @@
                 <span>Zurück zur Übersicht</span>
             </button>
 
-            <!-- Video Container mit klicksicherer Überlagerung -->
-            <div class="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-slate-800">
+            <!-- Video Container mit 100% klicksicherer Überlagerung & Sandbox -->
+            <div class="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-slate-800 group">
                 
-                <!-- YouTube Iframe -->
-                <iframe id="ytIframe" class="w-full h-full border-0" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                    allowfullscreen>
+                <!-- YouTube Iframe (Sandboxed: verhindert Popups/externe App-Aufrufe) -->
+                <iframe id="ytIframe" class="w-full h-full border-0 pointer-events-none" 
+                    sandbox="allow-scripts allow-same-origin allow-presentation"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
                 </iframe>
 
-                <!-- OVERLAY BLOCKIERUNGS-SCHICHT FÜR OBEN (Titel & YouTube Logo Klicks verhindern) -->
-                <div class="absolute top-0 left-0 right-0 h-16 bg-transparent z-10 cursor-default"></div>
+                <!-- 100% VOLLFLÄCHIGES SCHUTZSCHILD OVERLAY -->
+                <!-- Fängt JEDEN Klick/Touch ab. Verhindert Zugriff auf YouTube-Logos, Titel & Links -->
+                <div id="videoTouchShield" onclick="app.togglePlayPause()" class="absolute inset-0 z-20 cursor-pointer flex items-center justify-center bg-black/10 hover:bg-black/20 transition">
+                    <!-- Play/Pause Feedback Icon -->
+                    <div id="playStateIcon" class="w-20 h-20 bg-pink-500/90 text-white rounded-full flex items-center justify-center shadow-2xl transform scale-0 transition-transform duration-200">
+                        <i id="playStateIconI" class="fa-solid fa-pause text-3xl"></i>
+                    </div>
+                </div>
             </div>
 
-            <!-- Video Info Panel -->
-            <div class="bg-slate-800/80 backdrop-blur p-5 rounded-2xl border border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                    <span id="playerCategoryBadge" class="inline-block px-3 py-1 bg-pink-500/20 text-pink-400 text-xs font-bold rounded-lg mb-1">Kategorie</span>
-                    <h2 id="playerVideoTitle" class="text-xl font-bold text-white">Video Titel</h2>
+            <!-- EIGENE KINDERFREUNDLICHE STEUERUNGSLEISTE (KIDs PLAYER CONTROLS) -->
+            <div class="bg-slate-800/90 backdrop-blur p-4 rounded-2xl border border-slate-700 flex flex-col space-y-3">
+                
+                <!-- Fortschrittsbalken -->
+                <div class="flex items-center space-x-3 text-xs text-slate-400 font-bold">
+                    <span id="currentTimeText">0:00</span>
+                    <input type="range" id="customProgressBar" value="0" min="0" max="100" oninput="app.onSeekInput(this.value)" class="flex-grow h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-pink-500">
+                    <span id="durationText">0:00</span>
                 </div>
-                <button onclick="app.showHome()" class="w-full sm:w-auto bg-slate-700 hover:bg-slate-600 px-6 py-3 rounded-xl font-bold text-slate-200 transition">
-                    Fertig
-                </button>
+
+                <!-- Custom Transport Buttons -->
+                <div class="flex items-center justify-between gap-2 pt-1">
+                    <div class="flex items-center space-x-2">
+                        <!-- Big Play/Pause Button -->
+                        <button onclick="app.togglePlayPause()" id="btnPlayPause" class="bg-gradient-to-r from-pink-500 to-yellow-500 hover:from-pink-600 hover:to-yellow-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center space-x-2 shadow-lg active:scale-95 transition">
+                            <i id="btnPlayPauseIcon" class="fa-solid fa-play text-xl"></i>
+                            <span id="btnPlayPauseText" class="text-sm">Pause</span>
+                        </button>
+
+                        <!-- 10 Sek Zurück -->
+                        <button onclick="app.seekRelative(-10)" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-3 rounded-2xl font-bold flex items-center space-x-1 active:scale-95 transition" title="10s zurück">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span class="text-xs">10s</span>
+                        </button>
+
+                        <!-- 10 Sek Vor -->
+                        <button onclick="app.seekRelative(10)" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-3 rounded-2xl font-bold flex items-center space-x-1 active:scale-95 transition" title="10s vor">
+                            <span class="text-xs">10s</span>
+                            <i class="fa-solid fa-rotate-right"></i>
+                        </button>
+                    </div>
+
+                    <div>
+                        <span id="playerCategoryBadge" class="hidden sm:inline-block px-3 py-1 bg-pink-500/20 text-pink-400 text-xs font-bold rounded-lg mr-2">Kategorie</span>
+                        <button onclick="app.showHome()" class="bg-slate-700 hover:bg-slate-600 px-5 py-3 rounded-2xl font-bold text-slate-200 text-sm transition">
+                            Fertig
+                        </button>
+                    </div>
+                </div>
+
+                <h2 id="playerVideoTitle" class="text-base font-bold text-white truncate pt-1">Video Titel</h2>
             </div>
         </div>
 
     </main>
-
-    <!-- ELTERNBEREICH / ADMIN MODAL -->
-    <div id="adminModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
-        <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden my-8">
-            
-            <!-- Modal Header -->
-            <div class="bg-slate-800 px-6 py-4 border-b border-slate-700 flex items-center justify-between">
-                <div class="flex items-center space-x-3">
-                    <i class="fa-solid fa-user-shield text-indigo-400 text-xl"></i>
-                    <h3 class="text-lg font-bold">Eltern-Verwaltung (Cloud Synced)</h3>
-                </div>
-                <button onclick="app.closeAdminModal()" class="text-slate-400 hover:text-white text-xl p-1">
-                    <i class="fa-solid fa-xmark"></i>
-                </button>
-            </div>
-
-            <!-- PIN EINGABE STATE -->
-            <div id="pinState" class="p-8 flex flex-col items-center justify-center space-y-6">
-                <div class="text-center">
-                    <h4 class="text-xl font-bold mb-1">PIN eingeben</h4>
-                    <p class="text-xs text-slate-400">Standard-PIN ist <span class="text-indigo-400 font-mono font-bold">1234</span></p>
-                </div>
-                
-                <!-- PIN Display -->
-                <div id="pinDots" class="flex space-x-3">
-                    <div class="w-4 h-4 rounded-full border-2 border-indigo-500"></div>
-                    <div class="w-4 h-4 rounded-full border-2 border-indigo-500"></div>
-                    <div class="w-4 h-4 rounded-full border-2 border-indigo-500"></div>
-                    <div class="w-4 h-4 rounded-full border-2 border-indigo-500"></div>
-                </div>
-
-                <!-- PIN Keypad -->
-                <div class="grid grid-cols-3 gap-3 w-full max-w-xs">
-                    <button onclick="app.pressPin('1')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">1</button>
-                    <button onclick="app.pressPin('2')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">2</button>
-                    <button onclick="app.pressPin('3')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">3</button>
-                    <button onclick="app.pressPin('4')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">4</button>
-                    <button onclick="app.pressPin('5')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">5</button>
-                    <button onclick="app.pressPin('6')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">6</button>
-                    <button onclick="app.pressPin('7')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">7</button>
-                    <button onclick="app.pressPin('8')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">8</button>
-                    <button onclick="app.pressPin('9')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">9</button>
-                    <button onclick="app.clearPin()" class="bg-slate-800 text-red-400 hover:bg-slate-700 py-4 rounded-2xl font-bold text-lg active:scale-95 transition">C</button>
-                    <button onclick="app.pressPin('0')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">0</button>
-                    <button onclick="app.backspacePin()" class="bg-slate-800 text-slate-300 hover:bg-slate-700 py-4 rounded-2xl font-bold text-lg active:scale-95 transition"><i class="fa-solid fa-delete-left"></i></button>
-                </div>
-                <p id="pinError" class="text-red-400 text-sm hidden">Falsche PIN. Bitte erneut versuchen.</p>
-            </div>
-
-            <!-- ADMIN DASHBOARD PANEL (AFTER PIN) -->
-            <div id="adminPanelState" class="hidden p-6 space-y-6">
-                
-                <!-- Navigation Tabs in Admin -->
-                <div class="flex border-b border-slate-800 space-x-4">
-                    <button onclick="app.switchAdminTab('videos')" id="tabBtnVideos" class="pb-3 font-bold border-b-2 border-indigo-500 text-indigo-400">Video Verwaltung</button>
-                    <button onclick="app.switchAdminTab('settings')" id="tabBtnSettings" class="pb-3 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200">Zeitfenster & Einstellungen</button>
-                </div>
-
-                <!-- TAB 1: VIDEOS HINZUFÜGEN & VERWALTEN -->
-                <div id="adminTabVideos" class="space-y-6">
-                    <!-- Formular: Video Hinzufügen -->
-                    <form onsubmit="app.handleAddVideo(event)" class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/60 space-y-4">
-                        <h4 class="font-bold text-indigo-300 text-sm uppercase tracking-wider">Neues Video freigeben</h4>
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">YouTube URL oder Video-ID</label>
-                            <input type="text" id="inputYtUrl" required placeholder="https://www.youtube.com/watch?v=..." class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
-                        </div>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-400 mb-1">Titel für Kinder</label>
-                                <input type="text" id="inputTitle" required placeholder="z.B. Die Sendung mit der Maus" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-400 mb-1">Kategorie</label>
-                                <select id="inputCategory" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-indigo-500">
-                                    <option value="Zeichentrick">🎨 Zeichentrick</option>
-                                    <option value="Lernen">📚 Lernen & Wissen</option>
-                                    <option value="Musik">🎵 Musik & Lieder</option>
-                                    <option value="Tiere">🐾 Tiere</option>
-                                    <option value="Sonstiges">⭐ Sonstiges</option>
-                                </select>
-                            </div>
-                        </div>
-                        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 font-bold py-2.5 rounded-xl transition text-sm flex items-center justify-center space-x-2">
-                            <i class="fa-solid fa-cloud-arrow-up"></i>
-                            <span>In Cloud-Datenbank Speichern</span>
-                        </button>
-                    </form>
-
-                    <!-- Liste vorhandener Videos -->
-                    <div class="space-y-3">
-                        <h4 class="font-bold text-indigo-300 text-sm uppercase tracking-wider">Freigegebene Videos (<span id="adminVideoCount">0</span>)</h4>
-                        <div id="adminVideoList" class="max-h-60 overflow-y-auto space-y-2 pr-1">
-                            <!-- Dynamische Admin-Videoliste -->
-                        </div>
-                    </div>
-                </div>
-
-                <!-- TAB 2: ZEITFENSTER & EINSTELLUNGEN -->
-                <div id="adminTabSettings" class="hidden space-y-6">
-                    
-                    <!-- Zeitfenster Steuerung -->
-                    <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/60 space-y-4">
-                        <h4 class="font-bold text-indigo-300 text-sm uppercase tracking-wider">Zeit-Limits & Erlaubte Zeiten</h4>
-                        
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-400 mb-1">Erlaubte Startzeit</label>
-                                <input type="time" id="inputStartTime" value="07:00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                            </div>
-                            <div>
-                                <label class="block text-xs font-semibold text-slate-400 mb-1">Erlaubte Endzeit</label>
-                                <input type="time" id="inputEndTime" value="19:00" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-xs font-semibold text-slate-400 mb-1">Maximales Tageskontingent (Minuten)</label>
-                            <input type="number" id="inputDailyLimit" value="45" min="5" max="300" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                        </div>
-
-                        <button onclick="app.saveTimeSettings()" class="w-full bg-indigo-600 hover:bg-indigo-500 font-bold py-2 rounded-xl transition text-sm">
-                            Zeiteinstellungen in Cloud Speichern
-                        </button>
-                    </div>
-
-                    <!-- PIN ändern -->
-                    <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/60 space-y-3">
-                        <h4 class="font-bold text-indigo-300 text-sm uppercase tracking-wider">Eltern PIN ändern</h4>
-                        <div class="flex space-x-2">
-                            <input type="password" id="inputNewPin" placeholder="Neue 4-stellige PIN" maxlength="4" class="flex-grow bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-indigo-500">
-                            <button onclick="app.updatePin()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-xl font-bold text-sm">Speichern</button>
-                        </div>
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-    </div>
-
+<!-- ... existing code ... -->
     <!-- APPLICATION CONTROLLER -->
     <script>
         class KinderTubeApp {
@@ -383,17 +104,29 @@
                 };
 
                 this.timerInterval = null;
-                this.activeVideo = null;
+                this.progressInterval = null;
+                this.ytPlayer = null;
+                this.isPlaying = false;
                 this.user = null;
 
+                this.initYoutubeApi();
                 this.initCloud();
+            }
+
+            // YouTube Iframe API Laden für programmgesteuerte Player-Kontrolle
+            initYoutubeApi() {
+                if (!window.YT) {
+                    const tag = document.createElement('script');
+                    tag.src = "https://www.youtube.com/iframe_api";
+                    const firstScriptTag = document.getElementsByTagName('script')[0];
+                    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+                }
             }
 
             // Cloud Firestore Setup & Sync
             async initCloud() {
                 this.loadFromLocalFallback();
 
-                // Warten bis Firebase Module bereitstehen
                 const checkFirebase = setInterval(async () => {
                     if (window.firebaseCore) {
                         clearInterval(checkFirebase);
@@ -413,10 +146,8 @@
                             this.user = currentUser;
                             if (!currentUser) return;
 
-                            // Cloud-Dokument Pfad
                             const configDocRef = doc(db, 'artifacts', appId, 'public', 'data', 'app_config', 'main_config');
 
-                            // Realtime Firestore Listener
                             onSnapshot(configDocRef, (snapshot) => {
                                 if (snapshot.exists()) {
                                     const cloudData = snapshot.data();
@@ -434,7 +165,6 @@
 
                                     document.getElementById('cloudStatusIcon').className = "fa-solid fa-cloud text-green-400 text-[10px]";
                                 } else {
-                                    // Erste Initialisierung in der Cloud
                                     this.syncToCloud();
                                 }
                             }, (error) => {
@@ -564,7 +294,7 @@
                 });
             }
 
-            // --- SAFE VIDEO PLAYER LOGIC ---
+            // --- SICHERER ISOLIERTER VIDEO PLAYER ---
             playVideo(videoId) {
                 if (this.isLocked()) {
                     this.showLockScreen();
@@ -574,10 +304,6 @@
                 const video = this.state.videos.find(v => v.id === videoId);
                 if (!video) return;
 
-                this.activeVideo = video;
-                const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0&modestbranding=1&controls=1&showinfo=0&iv_load_policy=3&enablejsapi=1`;
-
-                document.getElementById('ytIframe').src = embedUrl;
                 document.getElementById('playerVideoTitle').innerText = video.title;
                 document.getElementById('playerCategoryBadge').innerText = video.category;
 
@@ -586,14 +312,133 @@
                 document.getElementById('playerView').classList.add('flex');
 
                 window.scrollTo({ top: 0, behavior: 'smooth' });
+
+                // Falls YT API geladen ist: Verwende YouTube JS Player ohne sichtbare YouTube-Controls
+                if (window.YT && window.YT.Player) {
+                    if (this.ytPlayer && typeof this.ytPlayer.loadVideoById === 'function') {
+                        this.ytPlayer.loadVideoById(videoId);
+                    } else {
+                        this.ytPlayer = new YT.Player('ytIframe', {
+                            videoId: videoId,
+                            playerVars: {
+                                'autoplay': 1,
+                                'controls': 0, // YouTube Standard-Controls KOMPLETT AUSBLENDEN
+                                'modestbranding': 1,
+                                'rel': 0,
+                                'fs': 0,
+                                'disablekb': 1,
+                                'iv_load_policy': 3,
+                                'playsinline': 1
+                            },
+                            events: {
+                                'onStateChange': (e) => this.onPlayerStateChange(e)
+                            }
+                        });
+                    }
+                } else {
+                    // Fallback iframe embed
+                    const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=0&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3`;
+                    document.getElementById('ytIframe').src = embedUrl;
+                }
+
+                this.startProgressTracker();
+            }
+
+            togglePlayPause() {
+                if (this.ytPlayer && typeof this.ytPlayer.getPlayerState === 'function') {
+                    const state = this.ytPlayer.getPlayerState();
+                    if (state === YT.PlayerState.PLAYING) {
+                        this.ytPlayer.pauseVideo();
+                        this.showPlayStateAnimation('pause');
+                    } else {
+                        this.ytPlayer.playVideo();
+                        this.showPlayStateAnimation('play');
+                    }
+                }
+            }
+
+            showPlayStateAnimation(type) {
+                const iconContainer = document.getElementById('playStateIcon');
+                const icon = document.getElementById('playStateIconI');
+
+                icon.className = type === 'play' ? "fa-solid fa-play text-3xl ml-1" : "fa-solid fa-pause text-3xl";
+                iconContainer.classList.remove('scale-0');
+                iconContainer.classList.add('scale-100');
+
+                setTimeout(() => {
+                    iconContainer.classList.remove('scale-100');
+                    iconContainer.classList.add('scale-0');
+                }, 600);
+            }
+
+            onPlayerStateChange(event) {
+                const btnIcon = document.getElementById('btnPlayPauseIcon');
+                const btnText = document.getElementById('btnPlayPauseText');
+
+                if (event.data === YT.PlayerState.PLAYING) {
+                    this.isPlaying = true;
+                    btnIcon.className = "fa-solid fa-pause text-xl";
+                    btnText.innerText = "Pause";
+                } else {
+                    this.isPlaying = false;
+                    btnIcon.className = "fa-solid fa-play text-xl ml-0.5";
+                    btnText.innerText = "Abspielen";
+                }
+            }
+
+            seekRelative(seconds) {
+                if (this.ytPlayer && typeof this.ytPlayer.getCurrentTime === 'function') {
+                    const curr = this.ytPlayer.getCurrentTime();
+                    this.ytPlayer.seekTo(curr + seconds, true);
+                }
+            }
+
+            onSeekInput(val) {
+                if (this.ytPlayer && typeof this.ytPlayer.getDuration === 'function') {
+                    const dur = this.ytPlayer.getDuration();
+                    if (dur > 0) {
+                        const targetSec = (val / 100) * dur;
+                        this.ytPlayer.seekTo(targetSec, true);
+                    }
+                }
+            }
+
+            startProgressTracker() {
+                if (this.progressInterval) clearInterval(this.progressInterval);
+
+                this.progressInterval = setInterval(() => {
+                    if (this.ytPlayer && typeof this.ytPlayer.getCurrentTime === 'function') {
+                        const curr = this.ytPlayer.getCurrentTime() || 0;
+                        const dur = this.ytPlayer.getDuration() || 0;
+
+                        if (dur > 0) {
+                            const pct = (curr / dur) * 100;
+                            document.getElementById('customProgressBar').value = pct;
+                            document.getElementById('currentTimeText').innerText = this.formatTime(curr);
+                            document.getElementById('durationText').innerText = this.formatTime(dur);
+                        }
+                    }
+                }, 500);
+            }
+
+            formatTime(seconds) {
+                const s = Math.floor(seconds || 0);
+                const mins = Math.floor(s / 60);
+                const secs = s % 60;
+                return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
             }
 
             showHome() {
-                document.getElementById('ytIframe').src = '';
+                if (this.progressInterval) clearInterval(this.progressInterval);
+                if (this.ytPlayer && typeof this.ytPlayer.stopVideo === 'function') {
+                    this.ytPlayer.stopVideo();
+                } else {
+                    document.getElementById('ytIframe').src = '';
+                }
+                
                 document.getElementById('playerView').classList.add('hidden');
                 document.getElementById('playerView').classList.remove('flex');
                 document.getElementById('homeView').classList.remove('hidden');
-                this.activeVideo = null;
             }
 
             // --- TIME MONITOR & LOCKOUT SYSTEM ---
