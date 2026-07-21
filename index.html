@@ -26,29 +26,35 @@
         }
     </script>
     
-    <!-- FontAwesome & Google Fonts -->
+    <!-- FontAwesome für Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Google Fonts (Fredoka) -->
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
 
+    <!-- Firebase SDK Modular -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Firebase Initialisierung
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-            apiKey: "demo-api-key",
-            authDomain: "demo-app.firebaseapp.com",
-            projectId: "demo-app",
-            storageBucket: "demo-app.appspot.com",
-            messagingSenderId: "123456789",
-            appId: "1:123456789:web:123456789"
-        };
+        // Firebase Initialisierung mit Fallback
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'kindertube-default-app';
+        let app = null;
+        let auth = null;
+        let db = null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'kindertube-tablet-app';
+
+        if (firebaseConfig) {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+            } catch (e) {
+                console.warn("Firebase Init Hinweis:", e);
+            }
+        }
 
         window.firebaseCore = {
             auth,
@@ -91,6 +97,7 @@
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col overflow-x-hidden selection:bg-pink-500 selection:text-white">
 
+    <!-- APP HEADER -->
     <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700 px-4 py-3 sticky top-0 z-30 flex items-center justify-between shadow-lg">
         <div class="flex items-center space-x-3 cursor-pointer" onclick="app.showHome()">
             <div class="w-10 h-10 bg-gradient-to-tr from-pink-500 to-yellow-400 rounded-2xl flex items-center justify-center shadow-md transform -rotate-3">
@@ -102,22 +109,25 @@
                 </h1>
                 <p class="text-xs text-slate-400 font-medium flex items-center space-x-1">
                     <span>Safe Tablet</span>
-                    <i id="cloudStatusIcon" class="fa-solid fa-cloud text-green-400 text-[10px]" title="Verbindungsstatus"></i>
+                    <i id="cloudStatusIcon" class="fa-solid fa-cloud text-green-400 text-[10px]" title="Status"></i>
                 </p>
             </div>
         </div>
 
         <!-- System Controls & Time Monitor -->
         <div class="flex items-center space-x-3">
-            <div id="timeStatusBadge" class="hidden sm:flex items-center space-x-2 bg-slate-700/80 px-3 py-1.5 rounded-full border border-slate-600 text-sm">
+            <!-- Restzeit-Anzeige -->
+            <div id="timeStatusBadge" class="flex items-center space-x-2 bg-slate-700/80 px-3 py-1.5 rounded-full border border-slate-600 text-sm">
                 <i class="fa-solid fa-clock text-yellow-400"></i>
                 <span id="remainingTimeText" class="font-bold">-- Min</span>
             </div>
 
+            <!-- Home Button -->
             <button onclick="app.showHome()" class="p-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl transition text-slate-200" title="Startseite">
                 <i class="fa-solid fa-house text-lg"></i>
             </button>
 
+            <!-- Elternbereich (PIN Protected) -->
             <button onclick="app.openAdminModal()" class="p-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl transition text-white shadow-md flex items-center space-x-2">
                 <i class="fa-solid fa-user-shield text-lg"></i>
                 <span class="hidden md:inline text-sm font-semibold">Elternbereich</span>
@@ -125,6 +135,7 @@
         </div>
     </header>
 
+    <!-- MAIN CONTENT AREA -->
     <main class="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
 
         <!-- SPERR-BILDSCHIRM (ZEITFENSTER / TIMER ABGELAUFEN) -->
@@ -143,14 +154,18 @@
 
         <!-- HOME VIEW (KATEGORIEN & VIDEOS) -->
         <div id="homeView" class="space-y-6">
+            
+            <!-- Category Filter Bar -->
             <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none" id="categoryFilterContainer">
                 <!-- Dynamisch erzeugt -->
             </div>
 
+            <!-- Video Grid -->
             <div id="videoGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 <!-- Dynamische Video Kacheln -->
             </div>
 
+            <!-- Empty State -->
             <div id="emptyState" class="hidden flex-col items-center justify-center py-16 text-center space-y-4">
                 <div class="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center text-slate-500 text-3xl">
                     <i class="fa-solid fa-film"></i>
@@ -163,73 +178,54 @@
             </div>
         </div>
 
+        <!-- PLAYER VIEW (ISOLIERTER PLAYER MIT ZIELGERICHTETEN KLICK-SPERREN) -->
         <div id="playerView" class="hidden flex-col space-y-4">
-            <button onclick="app.showHome()" class="self-start flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 px-4 py-2.5 rounded-xl font-bold text-slate-200 transition touch-card">
-                <i class="fa-solid fa-arrow-left"></i>
+            <button onclick="app.showHome()" class="self-start flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 px-5 py-3 rounded-2xl font-bold text-slate-200 transition touch-card shadow-md">
+                <i class="fa-solid fa-arrow-left text-lg"></i>
                 <span>Zurück zur Übersicht</span>
             </button>
 
-            <!-- Video Container mit 100% klicksicherem Overlay Shield -->
-            <div class="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-slate-800 group">
+            <!-- Video Container mit Anti-YouTube-Klick Schutzschilden -->
+            <div class="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-slate-800 select-none">
                 
                 <!-- YouTube Iframe -->
-                <iframe id="ytIframe" class="w-full h-full border-0 pointer-events-none" 
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
+                <iframe id="ytIframe" class="w-full h-full border-0" 
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                    allowfullscreen>
                 </iframe>
 
-                <!-- 100% VOLLFLÄCHIGES TOUCH-SHIELD OVERLAY -->
-                <!-- Fängt jeden Klick ab. Verhindert YouTube-Logo-, Titel- & Kanal-Links vollständig -->
-                <div id="videoTouchShield" onclick="app.togglePlayPause()" class="absolute inset-0 z-20 cursor-pointer flex items-center justify-center bg-black/5 hover:bg-black/15 transition">
-                    <div id="playStateIcon" class="w-20 h-20 bg-pink-500/90 text-white rounded-full flex items-center justify-center shadow-2xl transform scale-0 transition-transform duration-200">
-                        <i id="playStateIconI" class="fa-solid fa-pause text-3xl"></i>
-                    </div>
+                <!-- SHIELD OVERLAY 1: OBERER BEREICH (Sperrt YouTube-Titel, Kanal-Link & Teilen-Button) -->
+                <div class="absolute top-0 left-0 right-0 h-16 bg-transparent z-20 pointer-events-auto cursor-default" 
+                     onclick="event.stopPropagation();" 
+                     title="Sicherheitssperre aktiv">
+                </div>
+
+                <!-- SHIELD OVERLAY 2: UNTERER RECHTER BEREICH (Sperrt 'Auf YouTube ansehen' Logo) -->
+                <div class="absolute bottom-0 right-0 w-36 h-14 bg-transparent z-20 pointer-events-auto cursor-default" 
+                     onclick="event.stopPropagation();" 
+                     title="Sicherheitssperre aktiv">
                 </div>
             </div>
 
-            <!-- KINDERFREUNDLICHE STEUERUNGSLEISTE (CUSTOM PLAYER CONTROLS) -->
-            <div class="bg-slate-800/90 backdrop-blur p-4 rounded-2xl border border-slate-700 flex flex-col space-y-3">
-                
-                <div class="flex items-center space-x-3 text-xs text-slate-400 font-bold">
-                    <span id="currentTimeText">0:00</span>
-                    <input type="range" id="customProgressBar" value="0" min="0" max="100" oninput="app.onSeekInput(this.value)" class="flex-grow h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-pink-500">
-                    <span id="durationText">0:00</span>
+            <!-- Video Info & Steuerung -->
+            <div class="bg-slate-800/90 backdrop-blur p-5 rounded-2xl border border-slate-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-lg">
+                <div>
+                    <span id="playerCategoryBadge" class="inline-block px-3 py-1 bg-pink-500/20 text-pink-400 text-xs font-bold rounded-lg mb-1">Kategorie</span>
+                    <h2 id="playerVideoTitle" class="text-xl font-bold text-white">Video Titel</h2>
                 </div>
-
-                <div class="flex items-center justify-between gap-2 pt-1">
-                    <div class="flex items-center space-x-2">
-                        <button onclick="app.togglePlayPause()" id="btnPlayPause" class="bg-gradient-to-r from-pink-500 to-yellow-500 hover:from-pink-600 hover:to-yellow-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center space-x-2 shadow-lg active:scale-95 transition">
-                            <i id="btnPlayPauseIcon" class="fa-solid fa-play text-xl"></i>
-                            <span id="btnPlayPauseText" class="text-sm">Pause</span>
-                        </button>
-
-                        <button onclick="app.seekRelative(-10)" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-3 rounded-2xl font-bold flex items-center space-x-1 active:scale-95 transition" title="10s zurück">
-                            <i class="fa-solid fa-rotate-left"></i>
-                            <span class="text-xs">10s</span>
-                        </button>
-
-                        <button onclick="app.seekRelative(10)" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-3 rounded-2xl font-bold flex items-center space-x-1 active:scale-95 transition" title="10s vor">
-                            <span class="text-xs">10s</span>
-                            <i class="fa-solid fa-rotate-right"></i>
-                        </button>
-                    </div>
-
-                    <div>
-                        <span id="playerCategoryBadge" class="hidden sm:inline-block px-3 py-1 bg-pink-500/20 text-pink-400 text-xs font-bold rounded-lg mr-2">Kategorie</span>
-                        <button onclick="app.showHome()" class="bg-slate-700 hover:bg-slate-600 px-5 py-3 rounded-2xl font-bold text-slate-200 text-sm transition">
-                            Fertig
-                        </button>
-                    </div>
-                </div>
-
-                <h2 id="playerVideoTitle" class="text-base font-bold text-white truncate pt-1">Video Titel</h2>
+                <button onclick="app.showHome()" class="w-full sm:w-auto bg-pink-600 hover:bg-pink-500 text-white px-8 py-3 rounded-2xl font-bold transition shadow-lg active:scale-95">
+                    Fertig / Video Schließen
+                </button>
             </div>
         </div>
 
     </main>
 
+    <!-- ELTERNBEREICH / ADMIN MODAL -->
     <div id="adminModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden my-8">
             
+            <!-- Modal Header -->
             <div class="bg-slate-800 px-6 py-4 border-b border-slate-700 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <i class="fa-solid fa-user-shield text-indigo-400 text-xl"></i>
@@ -247,6 +243,7 @@
                     <p class="text-xs text-slate-400">Standard-PIN ist <span class="text-indigo-400 font-mono font-bold">1234</span></p>
                 </div>
                 
+                <!-- PIN Display -->
                 <div id="pinDots" class="flex space-x-3">
                     <div class="w-4 h-4 rounded-full border-2 border-indigo-500"></div>
                     <div class="w-4 h-4 rounded-full border-2 border-indigo-500"></div>
@@ -254,6 +251,7 @@
                     <div class="w-4 h-4 rounded-full border-2 border-indigo-500"></div>
                 </div>
 
+                <!-- PIN Keypad -->
                 <div class="grid grid-cols-3 gap-3 w-full max-w-xs">
                     <button onclick="app.pressPin('1')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">1</button>
                     <button onclick="app.pressPin('2')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">2</button>
@@ -274,6 +272,7 @@
             <!-- ADMIN DASHBOARD PANEL -->
             <div id="adminPanelState" class="hidden p-6 space-y-6">
                 
+                <!-- Navigation Tabs in Admin -->
                 <div class="flex border-b border-slate-800 space-x-4">
                     <button onclick="app.switchAdminTab('videos')" id="tabBtnVideos" class="pb-3 font-bold border-b-2 border-indigo-500 text-indigo-400">Video Verwaltung</button>
                     <button onclick="app.switchAdminTab('settings')" id="tabBtnSettings" class="pb-3 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200">Zeitfenster & Einstellungen</button>
@@ -304,8 +303,8 @@
                             </div>
                         </div>
                         <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-500 font-bold py-2.5 rounded-xl transition text-sm flex items-center justify-center space-x-2">
-                            <i class="fa-solid fa-cloud-arrow-up"></i>
-                            <span>In Datenbank Speichern</span>
+                            <i class="fa-solid fa-plus"></i>
+                            <span>Video zur Liste hinzufügen</span>
                         </button>
                     </form>
 
@@ -357,10 +356,11 @@
         </div>
     </div>
 
+    <!-- APPLICATION CONTROLLER SCRIPT -->
     <script>
         class KinderTubeApp {
             constructor() {
-                this.STORAGE_KEY = 'kindertube_local_fallback';
+                this.STORAGE_KEY = 'kindertube_local_storage_db';
 
                 this.state = {
                     videos: [
@@ -374,6 +374,12 @@
                             id: '8J3R-A3qM-E',
                             title: 'Kikaninchen - Schöne Kinderlieder',
                             category: 'Musik',
+                            addedAt: Date.now()
+                        },
+                        {
+                            id: 'vR3G534eR3k',
+                            title: 'Löwenzahn - Natur & Umwelt',
+                            category: 'Lernen',
                             addedAt: Date.now()
                         }
                     ],
@@ -389,29 +395,17 @@
                 };
 
                 this.timerInterval = null;
-                this.progressInterval = null;
-                this.ytPlayer = null;
-                this.isPlaying = false;
                 this.user = null;
 
-                this.initYoutubeApi();
-                this.initCloud();
+                this.initApp();
             }
 
-            initYoutubeApi() {
-                if (!window.YT) {
-                    const tag = document.createElement('script');
-                    tag.src = "https://www.youtube.com/iframe_api";
-                    const firstScriptTag = document.getElementsByTagName('script')[0];
-                    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-                }
-            }
+            initApp() {
+                this.loadFromLocalStorage();
 
-            async initCloud() {
-                this.loadFromLocalFallback();
-
+                // Firestore Sync versuchen falls konfiguriert
                 const checkFirebase = setInterval(async () => {
-                    if (window.firebaseCore) {
+                    if (window.firebaseCore && window.firebaseCore.db) {
                         clearInterval(checkFirebase);
                         const { auth, db, appId, doc, setDoc, onSnapshot, signInAnonymously, signInWithCustomToken, onAuthStateChanged } = window.firebaseCore;
 
@@ -422,7 +416,7 @@
                                 await signInAnonymously(auth);
                             }
                         } catch (err) {
-                            console.warn("Auth Fallback:", err);
+                            console.warn("Auth Hinweis:", err);
                         }
 
                         onAuthStateChanged(auth, (currentUser) => {
@@ -440,7 +434,7 @@
                                     if (cloudData.allowedStartTime) this.state.allowedStartTime = cloudData.allowedStartTime;
                                     if (cloudData.allowedEndTime) this.state.allowedEndTime = cloudData.allowedEndTime;
 
-                                    this.saveToLocalFallback();
+                                    this.saveToLocalStorage();
                                     this.renderCategories();
                                     this.renderVideos();
                                     this.renderAdminVideoList();
@@ -451,12 +445,12 @@
                                     this.syncToCloud();
                                 }
                             }, (error) => {
-                                console.error("Cloud Error:", error);
-                                document.getElementById('cloudStatusIcon').className = "fa-solid fa-cloud-slash text-yellow-500 text-[10px]";
+                                console.warn("Cloud offline / Local Mode:", error);
+                                document.getElementById('cloudStatusIcon').className = "fa-solid fa-cloud-slash text-slate-400 text-[10px]";
                             });
                         });
                     }
-                }, 200);
+                }, 300);
 
                 this.renderCategories();
                 this.renderVideos();
@@ -465,8 +459,8 @@
             }
 
             async syncToCloud() {
-                if (!window.firebaseCore || !this.user) {
-                    this.saveToLocalFallback();
+                if (!window.firebaseCore || !window.firebaseCore.db || !this.user) {
+                    this.saveToLocalStorage();
                     return;
                 }
                 const { db, appId, doc, setDoc } = window.firebaseCore;
@@ -482,12 +476,11 @@
                         updatedAt: Date.now()
                     });
                 } catch (e) {
-                    console.error("Cloud Speicherfehler:", e);
-                    this.saveToLocalFallback();
+                    this.saveToLocalStorage();
                 }
             }
 
-            loadFromLocalFallback() {
+            loadFromLocalStorage() {
                 try {
                     const data = localStorage.getItem(this.STORAGE_KEY);
                     if (data) {
@@ -500,11 +493,11 @@
                 if (this.state.lastDateStamp !== today) {
                     this.state.timeUsedTodayMinutes = 0;
                     this.state.lastDateStamp = today;
-                    this.saveToLocalFallback();
+                    this.saveToLocalStorage();
                 }
             }
 
-            saveToLocalFallback() {
+            saveToLocalStorage() {
                 try {
                     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this.state));
                 } catch (e) {}
@@ -584,6 +577,10 @@
                 const video = this.state.videos.find(v => v.id === videoId);
                 if (!video) return;
 
+                // Sichere YouTube Embed URL mit Autoplay
+                const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=1&rel=0&modestbranding=1&iv_load_policy=3`;
+
+                document.getElementById('ytIframe').src = embedUrl;
                 document.getElementById('playerVideoTitle').innerText = video.title;
                 document.getElementById('playerCategoryBadge').innerText = video.category;
 
@@ -592,132 +589,11 @@
                 document.getElementById('playerView').classList.add('flex');
 
                 window.scrollTo({ top: 0, behavior: 'smooth' });
-
-                const origin = encodeURIComponent(window.location.origin || 'https://localhost');
-
-                // YouTube Embed URL ohne sandbox-Blockaden mit origin
-                if (window.YT && window.YT.Player) {
-                    if (this.ytPlayer && typeof this.ytPlayer.loadVideoById === 'function') {
-                        this.ytPlayer.loadVideoById(videoId);
-                    } else {
-                        this.ytPlayer = new YT.Player('ytIframe', {
-                            videoId: videoId,
-                            playerVars: {
-                                'autoplay': 1,
-                                'controls': 0,
-                                'modestbranding': 1,
-                                'rel': 0,
-                                'fs': 0,
-                                'disablekb': 1,
-                                'iv_load_policy': 3,
-                                'playsinline': 1,
-                                'origin': window.location.origin
-                            },
-                            events: {
-                                'onStateChange': (e) => this.onPlayerStateChange(e)
-                            }
-                        });
-                    }
-                } else {
-                    const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=0&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3&playsinline=1&enablejsapi=1&origin=${origin}`;
-                    document.getElementById('ytIframe').src = embedUrl;
-                }
-
-                this.startProgressTracker();
-            }
-
-            togglePlayPause() {
-                if (this.ytPlayer && typeof this.ytPlayer.getPlayerState === 'function') {
-                    const state = this.ytPlayer.getPlayerState();
-                    if (state === YT.PlayerState.PLAYING) {
-                        this.ytPlayer.pauseVideo();
-                        this.showPlayStateAnimation('pause');
-                    } else {
-                        this.ytPlayer.playVideo();
-                        this.showPlayStateAnimation('play');
-                    }
-                }
-            }
-
-            showPlayStateAnimation(type) {
-                const iconContainer = document.getElementById('playStateIcon');
-                const icon = document.getElementById('playStateIconI');
-
-                icon.className = type === 'play' ? "fa-solid fa-play text-3xl ml-1" : "fa-solid fa-pause text-3xl";
-                iconContainer.classList.remove('scale-0');
-                iconContainer.classList.add('scale-100');
-
-                setTimeout(() => {
-                    iconContainer.classList.remove('scale-100');
-                    iconContainer.classList.add('scale-0');
-                }, 600);
-            }
-
-            onPlayerStateChange(event) {
-                const btnIcon = document.getElementById('btnPlayPauseIcon');
-                const btnText = document.getElementById('btnPlayPauseText');
-
-                if (event.data === YT.PlayerState.PLAYING) {
-                    this.isPlaying = true;
-                    btnIcon.className = "fa-solid fa-pause text-xl";
-                    btnText.innerText = "Pause";
-                } else {
-                    this.isPlaying = false;
-                    btnIcon.className = "fa-solid fa-play text-xl ml-0.5";
-                    btnText.innerText = "Abspielen";
-                }
-            }
-
-            seekRelative(seconds) {
-                if (this.ytPlayer && typeof this.ytPlayer.getCurrentTime === 'function') {
-                    const curr = this.ytPlayer.getCurrentTime();
-                    this.ytPlayer.seekTo(curr + seconds, true);
-                }
-            }
-
-            onSeekInput(val) {
-                if (this.ytPlayer && typeof this.ytPlayer.getDuration === 'function') {
-                    const dur = this.ytPlayer.getDuration();
-                    if (dur > 0) {
-                        const targetSec = (val / 100) * dur;
-                        this.ytPlayer.seekTo(targetSec, true);
-                    }
-                }
-            }
-
-            startProgressTracker() {
-                if (this.progressInterval) clearInterval(this.progressInterval);
-
-                this.progressInterval = setInterval(() => {
-                    if (this.ytPlayer && typeof this.ytPlayer.getCurrentTime === 'function') {
-                        const curr = this.ytPlayer.getCurrentTime() || 0;
-                        const dur = this.ytPlayer.getDuration() || 0;
-
-                        if (dur > 0) {
-                            const pct = (curr / dur) * 100;
-                            document.getElementById('customProgressBar').value = pct;
-                            document.getElementById('currentTimeText').innerText = this.formatTime(curr);
-                            document.getElementById('durationText').innerText = this.formatTime(dur);
-                        }
-                    }
-                }, 500);
-            }
-
-            formatTime(seconds) {
-                const s = Math.floor(seconds || 0);
-                const mins = Math.floor(s / 60);
-                const secs = s % 60;
-                return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
             }
 
             showHome() {
-                if (this.progressInterval) clearInterval(this.progressInterval);
-                if (this.ytPlayer && typeof this.ytPlayer.stopVideo === 'function') {
-                    this.ytPlayer.stopVideo();
-                } else {
-                    document.getElementById('ytIframe').src = '';
-                }
-                
+                // Stoppt das Video beim Verlassen
+                document.getElementById('ytIframe').src = '';
                 document.getElementById('playerView').classList.add('hidden');
                 document.getElementById('playerView').classList.remove('flex');
                 document.getElementById('homeView').classList.remove('hidden');
@@ -728,7 +604,7 @@
 
                 this.timerInterval = setInterval(() => {
                     this.state.timeUsedTodayMinutes += (1 / 60);
-                    this.saveToLocalFallback();
+                    this.saveToLocalStorage();
                     this.checkTimeLocks();
                 }, 1000);
             }
@@ -875,7 +751,7 @@
                 const videoId = this.extractYtId(rawUrl);
 
                 if (!videoId || videoId.length < 5) {
-                    this.showCustomMessage('Ungültige YouTube URL oder Video ID');
+                    this.showToast('Ungültige YouTube URL oder Video ID');
                     return;
                 }
 
@@ -894,6 +770,7 @@
 
                 this.renderAdminVideoList();
                 this.renderVideos();
+                this.showToast('Video erfolgreich hinzugefügt!');
             }
 
             deleteVideo(videoId) {
@@ -919,7 +796,7 @@
                                 <span class="text-xs text-indigo-400">${v.category}</span>
                             </div>
                         </div>
-                        <button onclick="app.deleteVideo('${v.id}')" class="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-slate-700">
+                        <button onclick="app.deleteVideo('${v.id}')" class="text-red-400 hover:text-red-300 p-2 rounded-lg hover:bg-slate-700 transition">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     `;
@@ -933,7 +810,7 @@
                 const limit = parseInt(document.getElementById('inputDailyLimit').value, 10);
 
                 if (!start || !end || isNaN(limit)) {
-                    this.showCustomMessage('Bitte alle Felder korrekt ausfüllen');
+                    this.showToast('Bitte alle Felder korrekt ausfüllen');
                     return;
                 }
 
@@ -944,6 +821,7 @@
                 this.syncToCloud();
                 this.checkTimeLocks();
                 this.closeAdminModal();
+                this.showToast('Zeiteinstellungen gespeichert!');
             }
 
             updatePin() {
@@ -952,13 +830,13 @@
                     this.state.pin = newPin;
                     this.syncToCloud();
                     document.getElementById('inputNewPin').value = '';
-                    this.showCustomMessage('Neue PIN wurde gespeichert!');
+                    this.showToast('Neue PIN gespeichert!');
                 } else {
-                    this.showCustomMessage('Die PIN muss genau 4 Zahlen enthalten.');
+                    this.showToast('Die PIN muss genau 4 Zahlen enthalten.');
                 }
             }
 
-            showCustomMessage(msg) {
+            showToast(msg) {
                 const toast = document.createElement('div');
                 toast.className = 'fixed bottom-5 right-5 bg-indigo-600 text-white px-5 py-3 rounded-2xl shadow-2xl z-50 font-bold text-sm flex items-center space-x-2 animate-bounce';
                 toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${msg}</span>`;
