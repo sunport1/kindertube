@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>KinderTube Cloud Safe Tablet</title>
+    <title>KinderTube Safe Tablet</title>
     
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -26,13 +26,10 @@
         }
     </script>
     
-    <!-- FontAwesome für Icons -->
+    <!-- FontAwesome & Google Fonts -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;600;700&display=swap" rel="stylesheet">
 
-    <!-- Firebase SDK Modular -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -94,7 +91,6 @@
 </head>
 <body class="bg-slate-900 text-white min-h-screen flex flex-col overflow-x-hidden selection:bg-pink-500 selection:text-white">
 
-    <!-- APP HEADER -->
     <header class="bg-slate-800/90 backdrop-blur border-b border-slate-700 px-4 py-3 sticky top-0 z-30 flex items-center justify-between shadow-lg">
         <div class="flex items-center space-x-3 cursor-pointer" onclick="app.showHome()">
             <div class="w-10 h-10 bg-gradient-to-tr from-pink-500 to-yellow-400 rounded-2xl flex items-center justify-center shadow-md transform -rotate-3">
@@ -105,7 +101,7 @@
                     KinderTube
                 </h1>
                 <p class="text-xs text-slate-400 font-medium flex items-center space-x-1">
-                    <span>Cloud Safe Tablet</span>
+                    <span>Safe Tablet</span>
                     <i id="cloudStatusIcon" class="fa-solid fa-cloud text-green-400 text-[10px]" title="Verbindungsstatus"></i>
                 </p>
             </div>
@@ -113,18 +109,15 @@
 
         <!-- System Controls & Time Monitor -->
         <div class="flex items-center space-x-3">
-            <!-- Restzeit-Anzeige -->
             <div id="timeStatusBadge" class="hidden sm:flex items-center space-x-2 bg-slate-700/80 px-3 py-1.5 rounded-full border border-slate-600 text-sm">
                 <i class="fa-solid fa-clock text-yellow-400"></i>
                 <span id="remainingTimeText" class="font-bold">-- Min</span>
             </div>
 
-            <!-- Home Button -->
-            <button onclick="app.showHome()" class="p-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl transition text-slate-200">
+            <button onclick="app.showHome()" class="p-2.5 bg-slate-700 hover:bg-slate-600 rounded-xl transition text-slate-200" title="Startseite">
                 <i class="fa-solid fa-house text-lg"></i>
             </button>
 
-            <!-- Elternbereich (PIN Protected) -->
             <button onclick="app.openAdminModal()" class="p-2.5 bg-indigo-600 hover:bg-indigo-500 rounded-xl transition text-white shadow-md flex items-center space-x-2">
                 <i class="fa-solid fa-user-shield text-lg"></i>
                 <span class="hidden md:inline text-sm font-semibold">Elternbereich</span>
@@ -132,7 +125,6 @@
         </div>
     </header>
 
-    <!-- MAIN CONTENT AREA -->
     <main class="flex-grow p-4 md:p-6 max-w-7xl mx-auto w-full">
 
         <!-- SPERR-BILDSCHIRM (ZEITFENSTER / TIMER ABGELAUFEN) -->
@@ -151,18 +143,14 @@
 
         <!-- HOME VIEW (KATEGORIEN & VIDEOS) -->
         <div id="homeView" class="space-y-6">
-            
-            <!-- Category Filter Bar -->
             <div class="flex items-center space-x-2 overflow-x-auto pb-2 scrollbar-none" id="categoryFilterContainer">
                 <!-- Dynamisch erzeugt -->
             </div>
 
-            <!-- Video Grid -->
             <div id="videoGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
                 <!-- Dynamische Video Kacheln -->
             </div>
 
-            <!-- Empty State -->
             <div id="emptyState" class="hidden flex-col items-center justify-center py-16 text-center space-y-4">
                 <div class="w-20 h-20 bg-slate-800 rounded-3xl flex items-center justify-center text-slate-500 text-3xl">
                     <i class="fa-solid fa-film"></i>
@@ -175,58 +163,50 @@
             </div>
         </div>
 
-        <!-- PLAYER VIEW (ISOLIERTER PLAYER OHNE YOUTUBE-KLICKS) -->
         <div id="playerView" class="hidden flex-col space-y-4">
             <button onclick="app.showHome()" class="self-start flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 px-4 py-2.5 rounded-xl font-bold text-slate-200 transition touch-card">
                 <i class="fa-solid fa-arrow-left"></i>
                 <span>Zurück zur Übersicht</span>
             </button>
 
-            <!-- Video Container mit 100% klicksicherer Überlagerung & Sandbox -->
+            <!-- Video Container mit 100% klicksicherem Overlay Shield -->
             <div class="relative w-full aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl border border-slate-800 group">
                 
-                <!-- YouTube Iframe (Sandboxed: verhindert Popups/externe App-Aufrufe) -->
+                <!-- YouTube Iframe -->
                 <iframe id="ytIframe" class="w-full h-full border-0 pointer-events-none" 
-                    sandbox="allow-scripts allow-same-origin allow-presentation"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture">
                 </iframe>
 
-                <!-- 100% VOLLFLÄCHIGES SCHUTZSCHILD OVERLAY -->
-                <!-- Fängt JEDEN Klick/Touch ab. Verhindert Zugriff auf YouTube-Logos, Titel & Links -->
-                <div id="videoTouchShield" onclick="app.togglePlayPause()" class="absolute inset-0 z-20 cursor-pointer flex items-center justify-center bg-black/10 hover:bg-black/20 transition">
-                    <!-- Play/Pause Feedback Icon -->
+                <!-- 100% VOLLFLÄCHIGES TOUCH-SHIELD OVERLAY -->
+                <!-- Fängt jeden Klick ab. Verhindert YouTube-Logo-, Titel- & Kanal-Links vollständig -->
+                <div id="videoTouchShield" onclick="app.togglePlayPause()" class="absolute inset-0 z-20 cursor-pointer flex items-center justify-center bg-black/5 hover:bg-black/15 transition">
                     <div id="playStateIcon" class="w-20 h-20 bg-pink-500/90 text-white rounded-full flex items-center justify-center shadow-2xl transform scale-0 transition-transform duration-200">
                         <i id="playStateIconI" class="fa-solid fa-pause text-3xl"></i>
                     </div>
                 </div>
             </div>
 
-            <!-- EIGENE KINDERFREUNDLICHE STEUERUNGSLEISTE (KIDs PLAYER CONTROLS) -->
+            <!-- KINDERFREUNDLICHE STEUERUNGSLEISTE (CUSTOM PLAYER CONTROLS) -->
             <div class="bg-slate-800/90 backdrop-blur p-4 rounded-2xl border border-slate-700 flex flex-col space-y-3">
                 
-                <!-- Fortschrittsbalken -->
                 <div class="flex items-center space-x-3 text-xs text-slate-400 font-bold">
                     <span id="currentTimeText">0:00</span>
                     <input type="range" id="customProgressBar" value="0" min="0" max="100" oninput="app.onSeekInput(this.value)" class="flex-grow h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-pink-500">
                     <span id="durationText">0:00</span>
                 </div>
 
-                <!-- Custom Transport Buttons -->
                 <div class="flex items-center justify-between gap-2 pt-1">
                     <div class="flex items-center space-x-2">
-                        <!-- Big Play/Pause Button -->
                         <button onclick="app.togglePlayPause()" id="btnPlayPause" class="bg-gradient-to-r from-pink-500 to-yellow-500 hover:from-pink-600 hover:to-yellow-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center space-x-2 shadow-lg active:scale-95 transition">
                             <i id="btnPlayPauseIcon" class="fa-solid fa-play text-xl"></i>
                             <span id="btnPlayPauseText" class="text-sm">Pause</span>
                         </button>
 
-                        <!-- 10 Sek Zurück -->
                         <button onclick="app.seekRelative(-10)" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-3 rounded-2xl font-bold flex items-center space-x-1 active:scale-95 transition" title="10s zurück">
                             <i class="fa-solid fa-rotate-left"></i>
                             <span class="text-xs">10s</span>
                         </button>
 
-                        <!-- 10 Sek Vor -->
                         <button onclick="app.seekRelative(10)" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-3 rounded-2xl font-bold flex items-center space-x-1 active:scale-95 transition" title="10s vor">
                             <span class="text-xs">10s</span>
                             <i class="fa-solid fa-rotate-right"></i>
@@ -247,11 +227,9 @@
 
     </main>
 
-    <!-- ELTERNBEREICH / ADMIN MODAL -->
     <div id="adminModal" class="hidden fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
         <div class="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden my-8">
             
-            <!-- Modal Header -->
             <div class="bg-slate-800 px-6 py-4 border-b border-slate-700 flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                     <i class="fa-solid fa-user-shield text-indigo-400 text-xl"></i>
@@ -269,7 +247,6 @@
                     <p class="text-xs text-slate-400">Standard-PIN ist <span class="text-indigo-400 font-mono font-bold">1234</span></p>
                 </div>
                 
-                <!-- PIN Display -->
                 <div id="pinDots" class="flex space-x-3">
                     <div class="w-4 h-4 rounded-full border-2 border-indigo-500"></div>
                     <div class="w-4 h-4 rounded-full border-2 border-indigo-500"></div>
@@ -277,7 +254,6 @@
                     <div class="w-4 h-4 rounded-full border-2 border-indigo-500"></div>
                 </div>
 
-                <!-- PIN Keypad -->
                 <div class="grid grid-cols-3 gap-3 w-full max-w-xs">
                     <button onclick="app.pressPin('1')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">1</button>
                     <button onclick="app.pressPin('2')" class="bg-slate-800 hover:bg-slate-700 py-4 rounded-2xl font-bold text-xl active:scale-95 transition">2</button>
@@ -295,10 +271,9 @@
                 <p id="pinError" class="text-red-400 text-sm hidden">Falsche PIN. Bitte erneut versuchen.</p>
             </div>
 
-            <!-- ADMIN DASHBOARD PANEL (AFTER PIN) -->
+            <!-- ADMIN DASHBOARD PANEL -->
             <div id="adminPanelState" class="hidden p-6 space-y-6">
                 
-                <!-- Navigation Tabs in Admin -->
                 <div class="flex border-b border-slate-800 space-x-4">
                     <button onclick="app.switchAdminTab('videos')" id="tabBtnVideos" class="pb-3 font-bold border-b-2 border-indigo-500 text-indigo-400">Video Verwaltung</button>
                     <button onclick="app.switchAdminTab('settings')" id="tabBtnSettings" class="pb-3 font-bold border-b-2 border-transparent text-slate-400 hover:text-slate-200">Zeitfenster & Einstellungen</button>
@@ -306,7 +281,6 @@
 
                 <!-- TAB 1: VIDEOS HINZUFÜGEN & VERWALTEN -->
                 <div id="adminTabVideos" class="space-y-6">
-                    <!-- Formular: Video Hinzufügen -->
                     <form onsubmit="app.handleAddVideo(event)" class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/60 space-y-4">
                         <h4 class="font-bold text-indigo-300 text-sm uppercase tracking-wider">Neues Video freigeben</h4>
                         <div>
@@ -335,7 +309,6 @@
                         </button>
                     </form>
 
-                    <!-- Liste vorhandener Videos -->
                     <div class="space-y-3">
                         <h4 class="font-bold text-indigo-300 text-sm uppercase tracking-wider">Freigegebene Videos (<span id="adminVideoCount">0</span>)</h4>
                         <div id="adminVideoList" class="max-h-60 overflow-y-auto space-y-2 pr-1">
@@ -346,8 +319,6 @@
 
                 <!-- TAB 2: ZEITFENSTER & EINSTELLUNGEN -->
                 <div id="adminTabSettings" class="hidden space-y-6">
-                    
-                    <!-- Zeitfenster Steuerung -->
                     <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/60 space-y-4">
                         <h4 class="font-bold text-indigo-300 text-sm uppercase tracking-wider">Zeit-Limits & Erlaubte Zeiten</h4>
                         
@@ -372,7 +343,6 @@
                         </button>
                     </div>
 
-                    <!-- PIN ändern -->
                     <div class="bg-slate-800/60 p-4 rounded-2xl border border-slate-700/60 space-y-3">
                         <h4 class="font-bold text-indigo-300 text-sm uppercase tracking-wider">Eltern PIN ändern</h4>
                         <div class="flex space-x-2">
@@ -380,7 +350,6 @@
                             <button onclick="app.updatePin()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-xl font-bold text-sm">Speichern</button>
                         </div>
                     </div>
-
                 </div>
 
             </div>
@@ -388,7 +357,6 @@
         </div>
     </div>
 
-    <!-- APPLICATION CONTROLLER -->
     <script>
         class KinderTubeApp {
             constructor() {
@@ -430,7 +398,6 @@
                 this.initCloud();
             }
 
-            // YouTube Iframe API Laden für programmgesteuerte Player-Kontrolle
             initYoutubeApi() {
                 if (!window.YT) {
                     const tag = document.createElement('script');
@@ -440,7 +407,6 @@
                 }
             }
 
-            // Cloud Firestore Setup & Sync
             async initCloud() {
                 this.loadFromLocalFallback();
 
@@ -544,7 +510,6 @@
                 } catch (e) {}
             }
 
-            // --- CATEGORY RENDER ---
             renderCategories() {
                 const container = document.getElementById('categoryFilterContainer');
                 container.innerHTML = '';
@@ -567,7 +532,6 @@
                 });
             }
 
-            // --- VIDEO GRID RENDER ---
             renderVideos() {
                 const grid = document.getElementById('videoGrid');
                 const emptyState = document.getElementById('emptyState');
@@ -611,7 +575,6 @@
                 });
             }
 
-            // --- SICHERER ISOLIERTER VIDEO PLAYER ---
             playVideo(videoId) {
                 if (this.isLocked()) {
                     this.showLockScreen();
@@ -630,7 +593,9 @@
 
                 window.scrollTo({ top: 0, behavior: 'smooth' });
 
-                // Verwende YouTube JS Player ohne sichtbare YouTube-Controls
+                const origin = encodeURIComponent(window.location.origin || 'https://localhost');
+
+                // YouTube Embed URL ohne sandbox-Blockaden mit origin
                 if (window.YT && window.YT.Player) {
                     if (this.ytPlayer && typeof this.ytPlayer.loadVideoById === 'function') {
                         this.ytPlayer.loadVideoById(videoId);
@@ -639,13 +604,14 @@
                             videoId: videoId,
                             playerVars: {
                                 'autoplay': 1,
-                                'controls': 0, // YouTube Controls komplett deaktivieren
+                                'controls': 0,
                                 'modestbranding': 1,
                                 'rel': 0,
                                 'fs': 0,
                                 'disablekb': 1,
                                 'iv_load_policy': 3,
-                                'playsinline': 1
+                                'playsinline': 1,
+                                'origin': window.location.origin
                             },
                             events: {
                                 'onStateChange': (e) => this.onPlayerStateChange(e)
@@ -653,7 +619,7 @@
                         });
                     }
                 } else {
-                    const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=0&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3`;
+                    const embedUrl = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&controls=0&rel=0&modestbranding=1&disablekb=1&iv_load_policy=3&playsinline=1&enablejsapi=1&origin=${origin}`;
                     document.getElementById('ytIframe').src = embedUrl;
                 }
 
@@ -757,7 +723,6 @@
                 document.getElementById('homeView').classList.remove('hidden');
             }
 
-            // --- TIME MONITOR & LOCKOUT SYSTEM ---
             startTimerMonitor() {
                 if (this.timerInterval) clearInterval(this.timerInterval);
 
@@ -818,7 +783,6 @@
                 document.getElementById('lockScreen').classList.add('hidden');
             }
 
-            // --- ADMIN & PIN CONTROL ---
             openAdminModal() {
                 this.state.enteredPin = '';
                 this.updatePinDots();
@@ -911,7 +875,7 @@
                 const videoId = this.extractYtId(rawUrl);
 
                 if (!videoId || videoId.length < 5) {
-                    alert('Ungültige YouTube URL oder Video ID');
+                    this.showCustomMessage('Ungültige YouTube URL oder Video ID');
                     return;
                 }
 
@@ -969,7 +933,7 @@
                 const limit = parseInt(document.getElementById('inputDailyLimit').value, 10);
 
                 if (!start || !end || isNaN(limit)) {
-                    alert('Bitte alle Felder korrekt ausfüllen');
+                    this.showCustomMessage('Bitte alle Felder korrekt ausfüllen');
                     return;
                 }
 
@@ -988,10 +952,18 @@
                     this.state.pin = newPin;
                     this.syncToCloud();
                     document.getElementById('inputNewPin').value = '';
-                    alert('Neue PIN wurde in der Cloud gespeichert!');
+                    this.showCustomMessage('Neue PIN wurde gespeichert!');
                 } else {
-                    alert('Die PIN muss genau 4 Zahlen enthalten.');
+                    this.showCustomMessage('Die PIN muss genau 4 Zahlen enthalten.');
                 }
+            }
+
+            showCustomMessage(msg) {
+                const toast = document.createElement('div');
+                toast.className = 'fixed bottom-5 right-5 bg-indigo-600 text-white px-5 py-3 rounded-2xl shadow-2xl z-50 font-bold text-sm flex items-center space-x-2 animate-bounce';
+                toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${msg}</span>`;
+                document.body.appendChild(toast);
+                setTimeout(() => toast.remove(), 3000);
             }
         }
 
